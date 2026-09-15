@@ -1,0 +1,9 @@
+# Reference codebases — never upload these to EAS build servers.
+# ref/prm is a full Next.js app and ref/ninja-crm-mobile a full Expo app;
+# including them would bloat every build and confuse module resolution.
+ref/
+
+# Documentation
+docs/
+*.md
+!README.md

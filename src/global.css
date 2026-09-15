@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Design tokens — ported from the PRM web app (ref/prm/src/app/globals.css),
+  with ONE deliberate change: --primary is brand orange #ff8900 instead of the
+  web app's blue. Everything else (neutrals, radius) is kept identical so the
+  phone app reads as the same product.
+
+  Written as HSL "H S% L%" triples so Tailwind can wrap them: hsl(var(--x)).
+  See docs/03-DESIGN-SYSTEM.md.
+*/
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    /* Brand */
+    --primary: 32.2 100% 50%; /* #ff8900 */
+    --primary-foreground: 0 0% 100%;
+    /* Solid tints — NativeWind can't do alpha on hsl(var(--x)) tokens. */
+    --primary-soft: 32 100% 95%; /* tinted surface behind icons */
+    --primary-strong: 28 100% 34%; /* orange that is legible AS TEXT */
+
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 0 86% 97%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 32.2 100% 50%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark:root,
+  .dark {
+    --background: 240 8% 8%;
+    --foreground: 0 0% 98%;
+    --card: 240 6% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 32.2 100% 55%; /* lifted so it reads on dark */
+    --primary-foreground: 240 8% 8%; /* dark text on orange reads better here */
+    --primary-soft: 30 30% 18%;
+    --primary-strong: 32 100% 62%;
+
+    --secondary: 240 5% 20%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 18%;
+    --muted-foreground: 240 5% 70%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-soft: 0 40% 18%;
+
+    --border: 240 5% 22%;
+    --input: 240 5% 22%;
+    --ring: 32.2 100% 55%;
+  }
+}
+
+/*
+  One shared content wrapper so every screen has identical gutters.
+  Used via the <Container> component.
+*/
+@layer components {
+  .content-wrapper {
+    @apply w-full self-center px-4;
+  }
+}
