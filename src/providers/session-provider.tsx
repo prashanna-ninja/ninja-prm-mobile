@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { authClient } from "@/lib/auth-client";
+import { queryClient } from "@/lib/query-client";
 
 type SessionUser = {
   id: string;
@@ -96,6 +97,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await authClient.signOut();
     } catch {
       // Already cleared locally; nothing useful to show the user.
+    } finally {
+      // Drop every cached query. Without this the next person to sign in on
+      // this device sees the previous user's recordings until each query
+      // happens to refetch — their call transcripts, briefly, in someone
+      // else's hands.
+      queryClient.clear();
     }
   }, []);
 

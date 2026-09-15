@@ -1,169 +1,209 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 
+import { AppHeader } from "@/components/app-header";
+import { LibraryCard } from "@/components/dashboard/library-card";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { RecordingRow } from "@/components/recordings/recording-row";
+import { Screen } from "@/components/screen";
+import { RecordingRowSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { EmptyState, ErrorState } from "@/components/ui/states";
+import { useRecordings, useRecordingStats } from "@/api/recordings.api";
+import { ChevronRight, Library, Moon, Sun } from "@/lib/icons";
+import { percentChange, pluralize } from "@/lib/format";
 import { useSession } from "@/providers/session-provider";
 import { useTheme } from "@/providers/theme-provider";
 
-/**
- * TEMPORARY — Phase 1 verification screen.
- *
- * Proves the design system is wired end to end: tokens resolve, all four font
- * weights render, and the light/dark toggle drives NativeWind. Now also the
- * landing spot after a successful sign-in, so it carries Sign out until the
- * real Settings screen exists.
- *
- * Delete this in Phase 5 when the real Home screen lands.
- */
-export default function DesignSystemCheck() {
-  const { theme, toggleTheme } = useTheme();
-  // Read the shared session — never authClient.useSession() directly.
-  const { data: session, signOut } = useSession();
+const RECENT_COUNT = 5;
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const { data: session } = useSession();
+
+  // Two INDEPENDENT queries on purpose: if stats fail, the recent list should
+  // still render, and vice versa. One combined hook would blank the whole
+  // screen on a single failure.
+  const stats = useRecordingStats();
+  const recent = useRecordings({ pageSize: RECENT_COUNT });
+
+  const refreshing = stats.isRefetching || recent.isRefetching;
+  const onRefresh = () => {
+    void Promise.all([stats.refetch(), recent.refetch()]);
+  };
+
+  const firstName = session?.user?.name?.trim().split(/\s+/)[0];
+  const isEmpty =
+    stats.data?.total === 0 && (recent.data?.items.length ?? 0) === 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-      <ScrollView contentContainerClassName="px-4 pb-10 gap-6">
-        <View className="gap-1 pt-2">
-          <Text
-            className="font-display text-[30px] text-foreground"
-            style={{ letterSpacing: -0.5 }}
-          >
-            Ninja PRM
-          </Text>
-          <Text className="font-sans text-sm text-muted-foreground">
-            Phase 1 — design system check
-          </Text>
-        </View>
+    <Screen>
+      <ScrollView
+        contentContainerClassName="px-4 pb-8 gap-6"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FF8900"
+            colors={["#FF8900"]}
+          />
+        }
+      >
+        <AppHeader
+          title={greeting(firstName)}
+          titleLines={2}
+          subtitle="Everything you've captured, in one place."
+          right={<ThemeToggle />}
+        />
 
-        <Section title="Type scale">
-          <Text className="font-display text-[30px] text-foreground">
-            Display 700
-          </Text>
-          <Text className="font-sans-semibold text-base text-foreground">
-            Semibold 600 — section title
-          </Text>
-          <Text className="font-sans-medium text-[15px] text-foreground">
-            Medium 500 — card title
-          </Text>
-          <Text className="font-sans text-sm text-foreground">
-            Regular 400 — body copy sits here.
-          </Text>
-          <Text className="font-sans text-xs text-muted-foreground">
-            Regular 400 — muted meta line
-          </Text>
-        </Section>
-
-        <Section title="Brand">
-          <View className="flex-row flex-wrap gap-2">
-            <Swatch className="bg-primary" label="primary" onDark />
-            <Swatch className="bg-primary-soft" label="soft" />
-            <Swatch className="bg-secondary" label="secondary" />
-            <Swatch className="bg-muted" label="muted" />
-            <Swatch className="bg-destructive" label="destructive" onDark />
-          </View>
-          <Text className="font-sans text-sm text-primary-strong">
-            primary-strong — the only orange that is legible as text.
-          </Text>
-        </Section>
-
-        <Section title="Surfaces">
-          <View className="rounded-lg border border-border bg-card p-4 gap-1">
-            <Text className="font-sans-medium text-[15px] text-card-foreground">
-              Card
-            </Text>
-            <Text className="font-sans text-sm text-muted-foreground">
-              Border carries the hierarchy — no drop shadows anywhere.
-            </Text>
-          </View>
-
-          <View className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-4">
-            <View className="h-10 w-10 items-center justify-center rounded-md bg-primary-soft">
-              <Text className="font-sans-semibold text-primary">NP</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-sans-medium text-[15px] text-card-foreground">
-                Source tile
-              </Text>
-              <Text className="font-sans text-xs text-muted-foreground">
-                40×40, primary-soft, icon in primary
-              </Text>
-            </View>
-          </View>
-        </Section>
-
-        <Section title="Session">
-          <View className="rounded-lg border border-border bg-card p-4 gap-1">
-            <Text className="font-sans-medium text-[15px] text-card-foreground">
-              {session?.user?.name || "Signed in"}
-            </Text>
-            <Text className="font-sans text-sm text-muted-foreground">
-              {session?.user?.email ?? "—"}
-            </Text>
-          </View>
-        </Section>
-
-        <Section title="Theme">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            onPress={toggleTheme}
-            className="h-11 items-center justify-center rounded-lg bg-primary active:opacity-70"
-          >
-            <Text className="font-sans-semibold text-primary-foreground">
-              Current: {theme} — tap to toggle
-            </Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-            onPress={() => {
-              void signOut();
-            }}
-            className="h-11 items-center justify-center rounded-lg border border-border active:opacity-70"
-          >
-            <Text className="font-sans-semibold text-foreground">Sign out</Text>
-          </Pressable>
-        </Section>
+        {/* A wall of zeroes is a worse first impression than one honest empty
+            state, so when there's genuinely nothing we skip the stats. */}
+        {isEmpty ? (
+          <EmptyState
+            icon={<Library size={34} color="#D4D4D8" strokeWidth={1.6} />}
+            title="No recordings yet"
+            message="Calls, Plaud recordings, Granola meetings and Fieldy conversations will appear here once they sync."
+          />
+        ) : (
+          <>
+            <StatsBlock stats={stats} onOpen={() => router.push("/recordings")} />
+            <RecentBlock recent={recent} />
+          </>
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-function Section({
-  title,
-  children,
+/* ------------------------------------------------------------------ */
+
+function StatsBlock({
+  stats,
+  onOpen,
 }: {
-  title: string;
-  children: React.ReactNode;
+  stats: ReturnType<typeof useRecordingStats>;
+  onOpen: () => void;
 }) {
+  if (stats.isPending) {
+    return (
+      <View className="gap-3">
+        <View className="flex-row gap-3">
+          <Skeleton className="h-[92px] flex-1 rounded-lg" />
+          <Skeleton className="h-[92px] flex-1 rounded-lg" />
+        </View>
+        <Skeleton className="h-[220px] rounded-lg" />
+      </View>
+    );
+  }
+
+  if (stats.isError || !stats.data) {
+    return <ErrorState error={stats.error} onRetry={() => void stats.refetch()} />;
+  }
+
+  const data = stats.data;
+  const trend = percentChange(data.thisWeek, data.lastWeek);
+
   return (
     <View className="gap-3">
-      <Text className="font-sans-semibold text-xs uppercase text-muted-foreground">
-        {title}
-      </Text>
-      {children}
+      <View className="flex-row gap-3">
+        <StatCard
+          label="This week"
+          value={data.thisWeek}
+          trend={trend}
+          trendLabel="vs last week"
+          hint={data.lastWeek === 0 ? "First week of data" : undefined}
+          onPress={onOpen}
+        />
+        <StatCard
+          label="Needs a contact"
+          value={data.unassigned}
+          accent={data.unassigned > 0}
+          hint={data.unassigned === 0 ? "All linked up" : "Not linked to anyone"}
+          onPress={onOpen}
+        />
+      </View>
+
+      <LibraryCard stats={data} />
     </View>
   );
 }
 
-function Swatch({
-  className,
-  label,
-  onDark,
-}: {
-  className: string;
-  label: string;
-  onDark?: boolean;
-}) {
+function RecentBlock({ recent }: { recent: ReturnType<typeof useRecordings> }) {
+  const router = useRouter();
+
   return (
-    <View
-      className={`h-16 w-[72px] items-center justify-end rounded-md border border-border p-1 ${className}`}
-    >
-      <Text
-        className={`font-sans text-[10px] ${onDark ? "text-white" : "text-foreground"}`}
-      >
-        {label}
-      </Text>
+    <View className="gap-3">
+      <View className="flex-row items-center justify-between">
+        <Text className="font-sans-semibold text-xs uppercase tracking-wide text-muted-foreground">
+          Recent
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View all recordings"
+          onPress={() => router.push("/recordings")}
+          hitSlop={8}
+          className="flex-row items-center gap-0.5 active:opacity-70"
+        >
+          <Text className="font-sans-medium text-sm text-primary-strong">
+            View all
+          </Text>
+          <ChevronRight size={15} color="#AD5100" strokeWidth={2.2} />
+        </Pressable>
+      </View>
+
+      {recent.isPending ? (
+        <RecordingRowSkeleton count={3} />
+      ) : recent.isError ? (
+        <ErrorState error={recent.error} onRetry={() => void recent.refetch()} />
+      ) : recent.data && recent.data.items.length > 0 ? (
+        <>
+          <View className="gap-3">
+            {recent.data.items.map((item) => (
+              <RecordingRow key={`${item.source}-${item.id}`} item={item} compact />
+            ))}
+          </View>
+          {recent.data.totalCount > RECENT_COUNT ? (
+            <Text className="pt-0.5 text-center font-sans text-xs text-muted-foreground">
+              Showing {RECENT_COUNT} of {pluralize(recent.data.totalCount, "recording")}
+            </Text>
+          ) : null}
+        </>
+      ) : (
+        <EmptyState title="Nothing recent" message="New recordings will show up here." />
+      )}
     </View>
+  );
+}
+
+/**
+ * Time-of-day greeting, broken over two lines so the NAME gets its own line
+ * at display size rather than trailing off the end of a long salutation.
+ * Uses the device clock, which is the user's own.
+ */
+function greeting(firstName?: string) {
+  const hour = new Date().getHours();
+  const part =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  return firstName ? `${part},\n${firstName}` : part;
+}
+
+/** Light/dark switch. Lives here because Home is where you land. */
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Switch to ${isDark ? "light" : "dark"} mode`}
+      onPress={toggleTheme}
+      hitSlop={10}
+      className="h-10 w-10 items-center justify-center rounded-full border border-border active:opacity-70"
+    >
+      {isDark ? (
+        <Sun size={18} color="#A1A1AA" strokeWidth={2} />
+      ) : (
+        <Moon size={18} color="#52525B" strokeWidth={2} />
+      )}
+    </Pressable>
   );
 }
