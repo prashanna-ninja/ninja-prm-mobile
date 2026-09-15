@@ -85,7 +85,7 @@ export function AuthButton({
         <Text
           style={{
             fontFamily: "Bricolage_600SemiBold",
-            fontSize: isPrimary ? 16.5 : 14,
+            fontSize: isPrimary ? 17 : 14,
             color: isPrimary ? AUTH.white : AUTH.inkSoft,
             letterSpacing: isPrimary ? 0.1 : 0,
           }}

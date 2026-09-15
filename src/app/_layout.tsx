@@ -4,26 +4,17 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { View } from "react-native";
 
+import { useAuthDeepLink } from "@/hooks/use-auth-deep-link";
 import { appFonts } from "@/lib/fonts";
+import { SessionProvider, useSession } from "@/providers/session-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
-
-/**
- * ⏳ PHASE 3 STUB — flip to `true` to preview the logged-in side.
- *
- * Replaced by the real session once auth is wired:
- *
- *   const { data: session, isPending } = authClient.useSession();
- *   const isSignedIn = !!session?.user;
- *
- * ...plus `useAuthDeepLink()` to capture the magic-link return. See
- * docs/05-AUTH-DEEPLINK.md.
- */
-const IS_SIGNED_IN_STUB = false;
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <RootNavigator />
+      <SessionProvider>
+        <RootNavigator />
+      </SessionProvider>
     </ThemeProvider>
   );
 }
@@ -33,10 +24,21 @@ function RootNavigator() {
   // (render with system fonts) instead of hanging forever on a bad asset.
   const [fontsLoaded, fontError] = useFonts(appFonts);
 
-  if (!fontsLoaded && !fontError) {
-    // The branded hold, not a bare spinner — this is the first thing a user
-    // sees on every cold start, and it matches the splash screen exactly so
-    // the handover between them is invisible.
+  const { data: session, isPending, refetch } = useSession();
+  const isSignedIn = !!session?.user;
+
+  // Capture the session from the magic-link return (ninjaprm://?cookie=…).
+  // See hooks/use-auth-deep-link.ts for why the Expo plugin can't do this.
+  useAuthDeepLink(refetch);
+
+  // Hold until BOTH the stored session has resolved and the fonts are ready —
+  // otherwise the sign-in screen flashes before the guard redirects a user who
+  // is already signed in.
+  const isBooting = isPending || (!fontsLoaded && !fontError);
+
+  if (isBooting) {
+    // The branded hold, matching the splash exactly so the handover between
+    // them is invisible.
     return <View style={{ flex: 1, backgroundColor: "#FF8900" }} />;
   }
 
@@ -44,10 +46,10 @@ function RootNavigator() {
   // appears or disappears, Expo Router redirects automatically.
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={IS_SIGNED_IN_STUB}>
+      <Stack.Protected guard={isSignedIn}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
-      <Stack.Protected guard={!IS_SIGNED_IN_STUB}>
+      <Stack.Protected guard={!isSignedIn}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
     </Stack>

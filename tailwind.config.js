@@ -55,14 +55,22 @@ module.exports = {
         xl: "calc(var(--radius) + 4px)",
       },
       // Brand fonts, loaded at startup via useFonts in src/app/_layout.tsx.
-      // These names MUST match the keys in src/lib/fonts.ts.
+      // The VALUES here must match the keys in src/lib/fonts.ts.
       //
-      // React Native has no usable synthetic bold — always pick the family
-      // (font-semibold / font-display), never font-bold on the regular family.
+      // ⚠️ NEVER name a family `medium`, `semibold`, `bold`, `light`, … —
+      // Tailwind's built-in fontWeight scale uses the SAME `font-` prefix, so
+      // `font-semibold` becomes ambiguous and resolves to `fontWeight: 600`
+      // with NO fontFamily. On Android/Fabric that half-specified text style
+      // makes the native text measurer throw
+      // ("IllegalStateException: Required value was null" in
+      // TextLayoutManager.getOrCreateSpannableForText). Prefix them instead.
+      //
+      // React Native has no usable synthetic bold — always pick the FAMILY
+      // (font-sans-semibold / font-display), never font-bold.
       fontFamily: {
         sans: ["Bricolage_400Regular"],
-        medium: ["Bricolage_500Medium"],
-        semibold: ["Bricolage_600SemiBold"],
+        "sans-medium": ["Bricolage_500Medium"],
+        "sans-semibold": ["Bricolage_600SemiBold"],
         display: ["Bricolage_700Bold"],
       },
     },

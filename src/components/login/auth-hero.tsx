@@ -57,7 +57,7 @@ export function AuthHero({
           <Text
             style={{
               fontFamily: "Bricolage_400Regular",
-              fontSize: 14.5,
+              fontSize: 15,
               lineHeight: 22,
               color: AUTH.heroMuted,
             }}

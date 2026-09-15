@@ -7,9 +7,19 @@ import { AUTH } from "@/components/login/auth-palette";
 import { AuthButton } from "@/components/login/auth-button";
 import { EmailField } from "@/components/login/email-field";
 import { FadeIn } from "@/components/login/fade-in";
+import { authClient } from "@/lib/auth-client";
 import { ArrowLeft, Check, MailOpen, RefreshCw, ShieldCheck } from "@/lib/icons";
 import { signInSchema } from "@/schemas/auth.schema";
 import type { SignInStep, SignInValues } from "@/types/auth.types";
+
+/**
+ * Where the magic link sends the user back to. Must match, exactly:
+ *   - app.json          → expo.scheme
+ *   - lib/auth-client   → expoClient({ scheme })
+ *   - the server's        BETTER_AUTH_TRUSTED_ORIGINS
+ * Matching is `startsWith`, so the trailing `//` matters.
+ */
+const MAGIC_LINK_CALLBACK = "ninjaprm://";
 
 /**
  * The backend caps /sign-in/magic-link at 3 requests per 60s
@@ -20,6 +30,27 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 /** magicLink({ expiresIn: 900 }) on the server. Say it out loud on the screen. */
 const LINK_TTL_MINUTES = 15;
+
+/**
+ * Turn a thrown send failure into something a human can act on.
+ *
+ * The common real-world cases, in the order they actually happen:
+ *  - no network / wrong EXPO_PUBLIC_API_BASE_URL → fetch rejects with a
+ *    TypeError, which is otherwise the most baffling error in the app
+ *  - 403 INVALID_CALLBACKURL → the server hasn't got `ninjaprm://` in
+ *    BETTER_AUTH_TRUSTED_ORIGINS (a config problem, not a user problem)
+ */
+function describeSendFailure(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err ?? "");
+
+  if (/network request failed|fetch failed|failed to fetch/i.test(message)) {
+    return "Can't reach Ninja PRM. Check your connection and try again.";
+  }
+  if (/callbackurl/i.test(message)) {
+    return "Sign-in isn't configured for this app yet. Please contact your administrator.";
+  }
+  return message || "We couldn't send that link. Please try again.";
+}
 
 const INBOX_STEPS = [
   "Open the email we just sent",
@@ -63,18 +94,42 @@ export function useLoginForm() {
   const sendLink = React.useCallback(async (email: string) => {
     setFormError(null);
 
-    // ⏳ STUB — Phase 3 replaces this with:
-    //
-    //   await authClient.signIn.magicLink({
-    //     email,
-    //     callbackURL: "ninjaprm://",
-    //     newUserCallbackURL: "ninjaprm://",
-    //     errorCallbackURL: "ninjaprm://?error=magic-link",
-    //   });
-    //
-    // The UI is already written against the real failure modes (rate limiting,
-    // network error), so wiring it up is a one-function change.
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    const { error } = await authClient.signIn.magicLink({
+      email,
+      // All three MUST be the bare scheme. `ninjaprm://` is what the server
+      // trusts (BETTER_AUTH_TRUSTED_ORIGINS) — anything else returns
+      // 403 INVALID_CALLBACKURL before an email is ever sent.
+      callbackURL: MAGIC_LINK_CALLBACK,
+      newUserCallbackURL: MAGIC_LINK_CALLBACK,
+      // ⚠️ Deliberately bare, with no query of its own. Better Auth appends
+      // `?error=<code>` WITHOUT checking for an existing query string, so
+      // passing "ninjaprm://?error=magic-link" yields the malformed
+      // `ninjaprm://?error=magic-link?error=INVALID_TOKEN` (two `?`, no `&`).
+      // Verified against production 2026-09-15. Bare in → clean
+      // `ninjaprm://?error=INVALID_TOKEN` out.
+      errorCallbackURL: MAGIC_LINK_CALLBACK,
+    });
+
+    if (error) {
+      const message = error.message || "Failed to send sign-in link.";
+      const isRateLimited =
+        error.status === 429 ||
+        /rate|too many/i.test(message);
+
+      // On a rate limit the server HAS started a window, so show the cooldown
+      // rather than letting the user hammer a button that can't succeed.
+      if (isRateLimited) {
+        setSentTo(email);
+        setCooldown(RESEND_COOLDOWN_SECONDS);
+        setStep("sent");
+        setFormError(
+          "That was a lot of requests — wait for the timer before trying again.",
+        );
+        return;
+      }
+
+      throw new Error(message);
+    }
 
     setSentTo(email);
     setCooldown(RESEND_COOLDOWN_SECONDS);
@@ -84,8 +139,8 @@ export function useLoginForm() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       await sendLink(values.email.trim().toLowerCase());
-    } catch {
-      setFormError("We couldn't send that link. Check your connection and try again.");
+    } catch (err) {
+      setFormError(describeSendFailure(err));
     }
   });
 
@@ -93,8 +148,8 @@ export function useLoginForm() {
     if (cooldown > 0 || isSubmitting) return;
     try {
       await sendLink(getValues("email").trim().toLowerCase());
-    } catch {
-      setFormError("We couldn't resend that link. Try again in a moment.");
+    } catch (err) {
+      setFormError(describeSendFailure(err));
     }
   }, [cooldown, isSubmitting, getValues, sendLink]);
 
@@ -329,7 +384,7 @@ function SentStep({
             selectable
             style={{
               fontFamily: "Bricolage_600SemiBold",
-              fontSize: 16.5,
+              fontSize: 17,
               lineHeight: 23,
               color: AUTH.ink,
             }}

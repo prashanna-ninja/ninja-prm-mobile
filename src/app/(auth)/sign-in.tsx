@@ -59,7 +59,7 @@ export default function SignInScreen() {
             <Text
               style={{
                 fontFamily: "Bricolage_400Regular",
-                fontSize: 12.5,
+                fontSize: 13,
                 lineHeight: 18,
                 color: AUTH.muted,
                 textAlign: "center",
