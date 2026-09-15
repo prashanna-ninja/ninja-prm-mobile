@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "scheme": "ninjaprm",
     "userInterfaceStyle": "automatic",
+    "icon": "./src/assets/images/icon.png",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.adviceninja.ninjaprm",
@@ -17,6 +18,7 @@
       "package": "com.adviceninja.ninjaprm",
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#ff8900"
       }
     },
@@ -28,12 +30,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./src/assets/images/logo.png",
+          "image": "./src/assets/images/splash-icon.png",
           "backgroundColor": "#ff8900",
-          "imageWidth": 200,
+          "imageWidth": 180,
           "resizeMode": "contain",
           "dark": {
-            "image": "./src/assets/images/logo.png",
+            "image": "./src/assets/images/splash-icon.png",
             "backgroundColor": "#ff8900"
           }
         }
