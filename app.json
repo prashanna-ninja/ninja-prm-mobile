@@ -10,6 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.adviceninja.ninjaprm",
+      "icon": "./src/assets/images/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
