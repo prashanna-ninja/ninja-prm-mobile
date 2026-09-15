@@ -3,7 +3,14 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // We import lucide icons one module at a time so Metro doesn't bundle all
+      // ~1600 of them (see src/lib/icons.ts). The runtime files live under
+      // dist/esm/icons but their .d.ts files live under dist/types/icons, so
+      // point TypeScript at the right place.
+      "lucide-react-native/dist/esm/icons/*": [
+        "./node_modules/lucide-react-native/dist/types/icons/*"
+      ]
     }
   },
   "include": [

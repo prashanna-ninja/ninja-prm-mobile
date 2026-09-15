@@ -217,10 +217,22 @@ Measured with `npx expo export --platform android` (2026-09-15):
   re-exports all 7 weights, so importing from it bundles every `.ttf` (~623KB) when we use 4
   (~356KB). `src/lib/fonts.ts` imports from `.../400Regular` etc. — **don't "tidy" those into a
   single root import.**
+- **🚨 Import lucide icons from `@/lib/icons`, never from `lucide-react-native`.** The package
+  barrel is not tree-shaken by Metro: importing from it bundles **all ~1600 icons** and added
+  **~3MB** to the Android bundle for five icons (6.7MB → 4.8MB once fixed). `src/lib/icons.ts`
+  re-exports each icon from its own module (`lucide-react-native/dist/esm/icons/<kebab-name>`),
+  so the codebase still writes clean imports. `tsconfig.json` maps those deep paths to their
+  `.d.ts` files under `dist/types/icons/`.
+- **Resize images before they enter `src/assets/`.** The PRM logo is 16612×10624 — about **700MB
+  decoded**, which crashes the app. It's stored here at 600×384 / 22KB. Use `sharp`
+  (a devDependency) to downscale anything large; the throwaway script pattern is in the
+  2026-09-15 log entry.
 - **A 944KB `MaterialSymbols` font ships whether we like it or not.** It comes from
   `expo-symbols`, which is a transitive dependency of **`expo-router` itself** in SDK 57. Not
   removable without patching expo-router; not worth it. Just know it's there before hunting for
   bundle bloat.
+- **Run export checks into the scratchpad, not the repo:**
+  `npx expo export --platform android --output-dir "$env:TEMP\prm-export"`.
 - Four unused template packages were removed: `@expo/ui`, `expo-glass-effect`, `expo-device`,
   `expo-symbols` (the last one came back transitively, as above).
 

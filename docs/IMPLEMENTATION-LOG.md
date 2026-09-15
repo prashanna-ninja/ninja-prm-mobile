@@ -8,6 +8,63 @@ cheap; write it while the reasoning is still fresh.
 
 ---
 
+## 2026-09-15 — Session 3: Sign-in screen (UI only)
+
+Built the magic-link sign-in screen while the backend work runs in parallel. **First time the app
+ran on a real device**, which immediately paid for itself — see the bugs below.
+
+### What was built
+
+- `src/app/(auth)/sign-in.tsx` + `(auth)/_layout.tsx`; moved the Phase-1 design-check screen to
+  `(app)/index.tsx` and added `(app)/_layout.tsx`.
+- Root `_layout.tsx` now has the real `Stack.Protected` guard structure, with `IS_SIGNED_IN_STUB`
+  standing in for the session until Phase 3.
+- `components/login/`: `auth-hero`, `login-form` (both steps), `email-field`, `auth-button`,
+  `auth-palette`, `fade-in`.
+- `schemas/auth.schema.ts` + `types/auth.types.ts` (inferred, not hand-written).
+- `lib/icons.ts` — the icon barrel (see below).
+- Real logo imported from `ref/prm/public/logo.png`.
+
+**Design:** brand-orange gradient hero with the white wordmark, white sheet overlapping its bottom
+edge by 24px, boxed email field whose border animates to orange on focus, orange pill CTA. Two
+steps — email → "check your inbox" — with the hero copy changing between them so the transition
+feels like one screen rather than two. The sent state makes the **email address the hero**, since
+"did I type it right?" is the user's only real worry at that moment.
+
+**Still a stub:** `sendLink()` fakes a 900ms round-trip. Phase 3 swaps in
+`authClient.signIn.magicLink(...)` — one function. The UI is already written against the real
+failure modes (60s resend cooldown matching the server's 3-per-60s rate limit, 15-minute TTL copy,
+network error state).
+
+### 🚨 Three bugs found by running it on a device
+
+| Bug | Cause | Fix |
+| --- | ----- | --- |
+| **Login button invisible but still tappable** | `style={({pressed}) => ({…})}` on `Pressable`. **NativeWind 4 wraps every RN component for `className` support and does not reliably forward the FUNCTION form of `style`** — it was silently dropped, so the button had no background and no text colour. | Track press state with `onPressIn`/`onPressOut` + `useState`, pass a plain style **object**. Added to the CLAUDE.md gotcha list as §4b; there were two instances. |
+| **Huge blank gap mid-sheet** | Two sibling `flex: 1` views (the sheet and the footer) splitting the space between them. | Footer uses `marginTop: "auto"` instead. |
+| **Logo enormous / no top breathing room** | Source PNG is **16612×10624** — ~700MB decoded, which would have crashed the app outright. | Resized with `sharp` to 600×384 / **1075KB → 21.5KB**, displayed at 104×67, hero `paddingTop` 28. |
+
+### Other findings
+
+- **lucide-react-native's barrel is not tree-shaken by Metro.** `import { Send } from
+  "lucide-react-native"` bundled **all ~1600 icons**: the Android bundle went 3.7MB → **6.7MB** for
+  five icons. Fixed with `src/lib/icons.ts`, which re-exports each icon from its own module
+  (`dist/esm/icons/<kebab-name>`), plus a `tsconfig` `paths` entry pointing at the matching
+  `dist/types/icons/*.d.ts`. Bundle back to **4.8MB**, and verified by grepping the output for
+  icons we don't use (`croissant`, `venetian-mask`, `aperture` → all 0).
+- **Export checks now write to the scratchpad**, not `.verify/` in the repo.
+- Design deviation, deliberate: the auth screen uses an explicit palette
+  (`components/login/auth-palette.ts`) rather than the themed tokens. It's always light and always
+  brand-forward — a signed-out screen that flips to dark adds nothing. Everything behind the guard
+  uses the normal tokens.
+
+### Next
+
+Phase 2 (UI primitives) or Phase 3 (wire auth) once the backend lands. The sign-in screen is
+**device-verified for layout**; the send/resend path is still a stub.
+
+---
+
 ## 2026-09-15 — Session 2: Phase 1 complete (scaffold + design system)
 
 **The app exists.** Expo scaffolded, NativeWind v4 stable wired up and verified, brand tokens and

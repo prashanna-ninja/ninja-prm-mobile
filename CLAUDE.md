@@ -100,6 +100,14 @@ These cost real debugging time on the sibling app. They apply here identically.
 4. **Alpha on themed colours is unreliable** in NativeWind (`bg-primary/10` etc., because tokens
    are `hsl(var(--x))` with no alpha placeholder). Use the solid tint tokens defined in
    `docs/03-DESIGN-SYSTEM.md`, or alpha on a literal colour (`bg-black/40`).
+4b. **🚨 Never give a `Pressable` a FUNCTION style** (`style={({ pressed }) => ({…})}`).
+   NativeWind 4 wraps every RN component to support `className`, and that wrapper does not
+   reliably forward the function form — the style is silently dropped, so a button renders with
+   no background and no text colour: **invisible but still tappable.** Cost us a real device bug
+   on 2026-09-15. Track press state with `onPressIn`/`onPressOut` + `useState` and pass a plain
+   style **object**. See `src/components/login/auth-button.tsx`.
+4c. **Import lucide icons from `@/lib/icons`**, never from `lucide-react-native` — the barrel is
+   not tree-shaken and bundles all ~1600 icons (~3MB). See `docs/02` §7.
 5. **Dynamic routes use the object form:** `router.push({ pathname: "/recordings/[source]/[id]",
    params: { source, id } })` — typed routes require it.
 6. **`KeyboardAvoidingView` does not work under Android edge-to-edge.** Measure the keyboard
