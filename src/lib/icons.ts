@@ -42,6 +42,12 @@ export { default as Mic } from "lucide-react-native/icons/mic";
 export { default as NotebookPen } from "lucide-react-native/icons/notebook-pen";
 export { default as Phone } from "lucide-react-native/icons/phone";
 
+/* audio player */
+export { default as Pause } from "lucide-react-native/icons/pause";
+export { default as Play } from "lucide-react-native/icons/play";
+export { default as RotateCcw } from "lucide-react-native/icons/rotate-ccw";
+export { default as RotateCw } from "lucide-react-native/icons/rotate-cw";
+
 /* list + detail affordances */
 export { default as FileText } from "lucide-react-native/icons/file-text";
 export { default as Search } from "lucide-react-native/icons/search";

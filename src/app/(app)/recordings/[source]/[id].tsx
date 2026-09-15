@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { AppHeader } from "@/components/app-header";
+import { AudioPlayer } from "@/components/recordings/audio-player";
 import { Screen } from "@/components/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
@@ -134,6 +135,12 @@ export default function RecordingDetailScreen() {
                   </View>
                 ) : null}
               </View>
+            ) : null}
+
+            {/* Omitted entirely for Granola and Fieldy, which have no audio —
+                an empty player is worse than no player. */}
+            {data.hasAudio ? (
+              <AudioPlayer source={source} recordingId={id} />
             ) : null}
 
             {data.contacts.length > 0 ? (
