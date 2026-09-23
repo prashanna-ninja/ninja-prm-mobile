@@ -8,6 +8,77 @@ cheap; write it while the reasoning is still fresh.
 
 ---
 
+## 2026-09-23 — Session 4: data layer, dashboard, list, detail, audio, share
+
+Phases 4–8 landed. The app now signs in, shows a dashboard, lists and filters
+recordings, opens a detail screen, plays audio, and saves/shares files.
+
+### Built
+
+- **Data layer** — `lib/api-client.ts` (`apiFetch`), `lib/query-client.ts`,
+  `lib/query-keys.ts` (key factory + `normalizeListParams`), `api/recordings.api.ts`,
+  `types/recording.types.ts`, `lib/format.ts`, `hooks/use-debounced-value.ts`.
+- **Shell** — three tabs: Home · Recordings · Settings.
+- **Home** — two-line greeting, This-week (+WoW trend) and Needs-a-contact stat
+  cards, source breakdown card that deep-links into a filtered list, 5 recent,
+  theme toggle in the header.
+- **Recordings** — debounced search, source chips with live counts,
+  newest/oldest, infinite scroll, pull-to-refresh, all four states.
+- **Detail** — `[source]/[id]`, one route for all four sources.
+- **Audio player** — `expo-audio`: play/pause, ±15s, scrubber, 1×–2× speed with
+  pitch correction, background playback.
+- **Save / share** — `lib/file-share.ts` + `components/recordings/recording-actions.tsx`.
+
+### Decisions
+
+| Decision | Why |
+| -------- | --- |
+| **Three tabs, Settings among them** | Superseded the two-tab plan in FEAT-01 §3 at the user's request; the Home header now carries the theme toggle instead of a settings gear. |
+| **Session moved OFF `authClient.useSession()`** | Better Auth's `useStore` backs `useSyncExternalStore` with a `getSnapshot` reading a ref its own `subscribe` mutates. React 19 flagged it as tearing on every launch. `providers/session-provider.tsx` drives the session from `useState` + the public `getSession()`/`signOut()`. Also switched the import to `better-auth/client` so the React hooks module isn't bundled at all. **Do not put the hook back.** |
+| **Sign-out clears the query cache** | Otherwise the next user on the device sees the previous user's recordings — call transcripts — until each query happens to refetch. |
+| **Share via a .txt FILE, not `Share.share({message})`** | Transcripts run to tens of thousands of characters and SMS/mail clients silently truncate long bodies. |
+| **Audio URL fetched on demand** (`enabled: false` + `refetch()`) | The signed URL expires; fetching it eagerly on every detail view burns links and risks handing the player a stale one. |
+
+### Bugs found and fixed (all on-device)
+
+1. **Login button invisible but tappable** — `style={({pressed}) => …}` on
+   `Pressable`. NativeWind 4 wraps RN components and does **not** forward the
+   function form; the style was dropped entirely. Now CLAUDE.md gotcha §4b.
+2. **Native text-measure crash** (`IllegalStateException: Required value was
+   null` in `TextLayoutManager`) — my Tailwind font families were named
+   `medium`/`semibold`, which **collide with Tailwind's built-in fontWeight
+   scale**. `font-semibold` resolved to `fontWeight: 600` with no `fontFamily`,
+   and Android's Fabric text measurer threw. Renamed to `sans-medium` /
+   `sans-semibold`.
+3. **Tab bar bubble spilling below the bar** — Android's default tab button uses
+   an unbounded ripple, and the safe-area inset was being added on top of the
+   bar's own padding under always-on edge-to-edge.
+4. **Gradle failure: `resource drawable/splashscreen_logo not found`** — the
+   splash plugin had `imageWidth`/`resizeMode` but no `image`.
+5. **Blank iOS app icon** — root `icon` is not enough on SDK 57; `ios.icon` must
+   be set explicitly. Confirmed by comparing against `ninja_totp_mobile` (SDK 55,
+   sets it, works). My first theory — that the alpha channel was at fault — was
+   **wrong**: both working sibling apps ship 4-channel PNGs.
+6. **Blurry icon** — measured `ninja_crm_mobile`'s icon at 75.5% mark width vs
+   our 66%. Matched it at 76% and added a sharpen pass after the >20× downscale.
+
+### Notes
+
+- `scripts/generate-icons.mjs` regenerates icon/splash/adaptive from the master
+  logo and **asserts** the two rules that keep biting: the mark's diagonal must
+  fit Android's circular mask, and the iOS icon must be opaque.
+- lucide's barrel isn't tree-shaken (~3MB for 5 icons) — `lib/icons.ts` imports
+  each icon from `lucide-react-native/icons/<name>`.
+- Expo packages aligned to SDK 57 patches via `expo install --fix`.
+
+### Next
+
+Per-source `details` blocks on the detail screen (call numbers, Plaud key
+topics, Granola attendees, Fieldy quotes) — the data already arrives in
+`details` and is simply not rendered yet.
+
+---
+
 ## 2026-09-15 — Session 3: Sign-in screen (UI only)
 
 Built the magic-link sign-in screen while the backend work runs in parallel. **First time the app

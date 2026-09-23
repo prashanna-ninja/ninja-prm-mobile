@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { AppHeader } from "@/components/app-header";
 import { AudioPlayer } from "@/components/recordings/audio-player";
+import { RecordingActions } from "@/components/recordings/recording-actions";
 import { Screen } from "@/components/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
@@ -18,9 +19,10 @@ import {
 /**
  * Recording detail — one route, all four sources.
  *
- * ⚠️ Phase 7 in progress: header + summary + action items + transcript are
- * here; the audio player and the per-source `details` blocks are still to
- * come (see docs/features/FEAT-01-RECORDINGS.md §6).
+ * Header, badges, audio player, save/share actions, people, summary, action
+ * items and transcript. Still to come: the per-source `details` blocks
+ * (call numbers, Plaud key topics, Granola attendees, Fieldy quotes) — the
+ * data already arrives in `details`. See docs/features/FEAT-01-RECORDINGS.md §6.
  */
 export default function RecordingDetailScreen() {
   const router = useRouter();
@@ -142,6 +144,8 @@ export default function RecordingDetailScreen() {
             {data.hasAudio ? (
               <AudioPlayer source={source} recordingId={id} />
             ) : null}
+
+            <RecordingActions recording={data} />
 
             {data.contacts.length > 0 ? (
               <Block title="People">

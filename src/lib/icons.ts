@@ -48,6 +48,11 @@ export { default as Play } from "lucide-react-native/icons/play";
 export { default as RotateCcw } from "lucide-react-native/icons/rotate-ccw";
 export { default as RotateCw } from "lucide-react-native/icons/rotate-cw";
 
+/* share + download */
+export { default as Copy } from "lucide-react-native/icons/copy";
+export { default as Download } from "lucide-react-native/icons/download";
+export { default as Share2 } from "lucide-react-native/icons/share-2";
+
 /* list + detail affordances */
 export { default as FileText } from "lucide-react-native/icons/file-text";
 export { default as Search } from "lucide-react-native/icons/search";
