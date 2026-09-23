@@ -71,6 +71,27 @@ recordings, opens a detail screen, plays audio, and saves/shares files.
   each icon from `lucide-react-native/icons/<name>`.
 - Expo packages aligned to SDK 57 patches via `expo install --fix`.
 
+### TestFlight prep (2026-09-23)
+
+- **Removed two permissions we don't use.** `expo-audio` defaults to adding
+  `NSMicrophoneUsageDescription` + Android `RECORD_AUDIO`, and
+  `expo-secure-store` adds `NSFaceIDUsageDescription`. We only PLAY audio and
+  we use SecureStore with plain get/set, so both are now disabled in the plugin
+  options. Unjustifiable permissions are a standard App Review question.
+  **Kept** `enableBackgroundPlayback` → `UIBackgroundModes:["audio"]`, which is
+  what makes playback survive a locked screen.
+- `eas.json` `production`: `distribution: store`, `autoIncrement`, Android
+  `app-bundle`. `submit.production.ios.ascAppId` still needs the real App Store
+  Connect ID.
+- **`expo-network` installed** — `@better-auth/expo` lazily `import()`s it in
+  its online manager. Missing, it threw "Cannot find module" in dev (caught, so
+  harmless, but noisy). Its peer range (`^8.0.7`) predates Expo renumbering to
+  match the SDK major, so a `.npmrc` with `legacy-peer-deps=true` is required
+  or a clean `npm install` fails with ERESOLVE. Verified
+  `addNetworkStateListener` is present and unchanged in 57.x.
+- Wired TanStack Query's `onlineManager` to it (docs/06 §6) — queries now pause
+  offline instead of failing.
+
 ### Parked
 
 **Share button commented out (user's call).** The detail screen ships with
