@@ -6,7 +6,8 @@ import { useRecordingAudio } from "@/api/recordings.api";
 import { describeError } from "@/components/ui/states";
 import { downloadAndShare, shareTextAsFile } from "@/lib/file-share";
 import { formatDateTimeLong } from "@/lib/format";
-import { Copy, Download, Share2 } from "@/lib/icons";
+import { Copy, Download } from "@/lib/icons";
+// import { Share2 } from "@/lib/icons"; // ← restore with the Share button below
 import { SOURCE_META } from "@/lib/recordings";
 import type { RecordingDetail } from "@/types/recording.types";
 
@@ -50,17 +51,31 @@ export function RecordingActions({ recording }: { recording: RecordingDetail }) 
     }
   };
 
-  const onShareTranscript = async () => {
-    if (busy || !recording.transcript) return;
-    setBusy("transcript");
-    try {
-      await shareTextAsFile(transcriptDocument(recording), `${baseName}.txt`);
-    } catch (err) {
-      Alert.alert("Couldn't share the transcript", describeError(err));
-    } finally {
-      setBusy(null);
-    }
-  };
+  /*
+   * ⏸ SHARE IS PARKED (2026-09-23, user's call).
+   *
+   * This shares the transcript as a .txt through the OS share sheet. It works,
+   * but the PRM web app's "share" is a different thing: you enter recipient
+   * addresses and a note, and the SERVER emails a branded transcript
+   * (`shareRecordingTranscript` in ref/prm/src/app/actions/share-transcript.ts).
+   * That needs a backend route — there is no REST endpoint for it today.
+   *
+   * Keeping Download + Copy only until we decide which one we want. To bring
+   * this back: uncomment this handler, the Share button in the JSX, and the
+   * Share2 import. `shareTextAsFile` and `transcriptDocument` are still here.
+   *
+   * const onShareTranscript = async () => {
+   *   if (busy || !recording.transcript) return;
+   *   setBusy("transcript");
+   *   try {
+   *     await shareTextAsFile(transcriptDocument(recording), `${baseName}.txt`);
+   *   } catch (err) {
+   *     Alert.alert("Couldn't share the transcript", describeError(err));
+   *   } finally {
+   *     setBusy(null);
+   *   }
+   * };
+   */
 
   const onCopyTranscript = async () => {
     if (!recording.transcript) return;
@@ -85,6 +100,7 @@ export function RecordingActions({ recording }: { recording: RecordingDetail }) 
 
       {hasTranscript ? (
         <>
+          {/* ⏸ Share parked — see the note above the handler.
           <ActionButton
             label="Share"
             icon={<Share2 size={16} color="#52525B" strokeWidth={2} />}
@@ -92,8 +108,9 @@ export function RecordingActions({ recording }: { recording: RecordingDetail }) 
             disabled={!!busy}
             onPress={onShareTranscript}
           />
+          */}
           <ActionButton
-            label="Copy"
+            label="Copy transcript"
             icon={<Copy size={16} color="#52525B" strokeWidth={2} />}
             disabled={!!busy}
             onPress={onCopyTranscript}

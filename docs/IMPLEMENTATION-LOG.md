@@ -71,6 +71,27 @@ recordings, opens a detail screen, plays audio, and saves/shares files.
   each icon from `lucide-react-native/icons/<name>`.
 - Expo packages aligned to SDK 57 patches via `expo install --fix`.
 
+### Parked
+
+**Share button commented out (user's call).** The detail screen ships with
+**Save audio** + **Copy transcript** only.
+
+The OS share sheet (transcript as a `.txt`) works and is still in the code,
+commented, in `components/recordings/recording-actions.tsx`. It was parked
+because it is **not the same feature as the web's "share"**: the PRM web app
+collects recipient addresses plus a note and has the SERVER email a branded
+transcript (`shareRecordingTranscript` in
+`ref/prm/src/app/actions/share-transcript.ts`). That is a **server action with
+no REST route**, so matching it needs one new backend endpoint:
+
+    POST /api/v1/recordings/:source/:id/share   { recipients, note? }
+
+a thin wrapper over the existing action — `parseRecipientEmails`,
+`validateRecipientEmails`, the 4,000-char note cap and
+`sendTranscriptShareEmail` all already exist. `/api/v1/me` covers the sender
+defaults, so no second endpoint. Undecided which version we want; nothing is
+blocked either way.
+
 ### Next
 
 Per-source `details` blocks on the detail screen (call numbers, Plaud key
