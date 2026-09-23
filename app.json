@@ -43,8 +43,21 @@
         }
       ],
       "expo-web-browser",
-      "expo-secure-store",
-      "expo-audio",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundRecording": false,
+          "enableBackgroundPlayback": true
+        }
+      ],
       "expo-asset",
       "expo-sharing"
     ],
