@@ -92,7 +92,35 @@ recordings, opens a detail screen, plays audio, and saves/shares files.
 - Wired TanStack Query's `onlineManager` to it (docs/06 §6) — queries now pause
   offline instead of failing.
 
-### Parked
+### Email transcript — shipped (2026-09-24)
+
+Backend merged (PR #5) and **verified live**: `POST /api/v1/recordings/:source/:id/share`
+returns 401 unauthenticated and 400 for a bad source, both JSON.
+
+Mobile side:
+
+- `api/share.api.ts` — `useShareTranscript()` plus `parseRecipients()`, which
+  splits exactly the way the server does so our count matches its limit.
+- `components/recordings/share-transcript-sheet.tsx` — a Modal matching the
+  web dialog: recording confirmation card, message, recipients, **Email me**,
+  Cancel / Send.
+- The **Share** button is back, relabelled **Email**, opening that sheet.
+  The row is now **Save audio · Email · Copy**.
+
+Notes:
+
+- **Server error messages are shown verbatim.** They're written for humans and
+  are exact ("You can send to up to 10 recipients at once."), so paraphrasing
+  them in the client would only invent a second source of truth.
+- The 10-recipient and 4,000-char caps are **mirrored client-side** for instant
+  feedback, but the server remains the authority.
+- **"Email me"** prefills from the session, and hides once your address is
+  already in the list.
+- The OS-share-as-`.txt` path was dropped from the UI — `shareTextAsFile` stays
+  in `lib/file-share.ts` as a utility. Email covers the real need, and two
+  buttons both called "share" doing different things is worse than one.
+
+### Parked (superseded 2026-09-24 — see above)
 
 **Share button commented out (user's call).** The detail screen ships with
 **Save audio** + **Copy transcript** only.

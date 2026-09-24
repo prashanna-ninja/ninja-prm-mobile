@@ -52,6 +52,8 @@ export { default as RotateCw } from "lucide-react-native/icons/rotate-cw";
 export { default as Copy } from "lucide-react-native/icons/copy";
 export { default as Download } from "lucide-react-native/icons/download";
 export { default as Share2 } from "lucide-react-native/icons/share-2";
+export { default as Mails } from "lucide-react-native/icons/mails";
+export { default as UserRoundPlus } from "lucide-react-native/icons/user-round-plus";
 
 /* list + detail affordances */
 export { default as FileText } from "lucide-react-native/icons/file-text";

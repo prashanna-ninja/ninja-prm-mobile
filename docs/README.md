@@ -30,6 +30,7 @@ One doc per feature. A feature doc is the spec: scope, screens, data, states, do
 Paste-ready prompts for work that happens in *another* repo or session.
 
 - [prompts/BACKEND-PHASE-0.md](prompts/BACKEND-PHASE-0.md) — **run in the `ninja_prm` backend repo**: native magic-link auth + the recordings REST API
+- [prompts/BACKEND-SHARE-TRANSCRIPT.md](prompts/BACKEND-SHARE-TRANSCRIPT.md) — **run in the `ninja_prm` backend repo**: `POST /api/v1/recordings/:source/:id/share`, so the app can email a transcript
 
 ## Living docs
 
