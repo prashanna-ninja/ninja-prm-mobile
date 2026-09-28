@@ -12,6 +12,8 @@ import {
 
 import { AppHeader } from "@/components/app-header";
 import { ContactAvatar } from "@/components/contacts/contact-avatar";
+import { ContactOverview } from "@/components/contacts/contact-overview";
+import { LogInteractionSheet } from "@/components/contacts/log-interaction-sheet";
 import { RelationshipBadge } from "@/components/contacts/relationship-badge";
 import { Screen } from "@/components/screen";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +23,11 @@ import {
   useContact,
   useDeleteContact,
 } from "@/api/contacts.api";
+import {
+  INTERACTION_LABELS,
+  useContactInteractions,
+  useContactRecordings,
+} from "@/api/interactions.api";
 import { formatDateCompact } from "@/lib/format";
 import {
   Archive,
@@ -32,6 +39,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  Plus,
   Trash,
 } from "@/lib/icons";
 import { parseStringList } from "@/types/contact.types";
@@ -41,8 +49,11 @@ export default function ContactDetailScreen() {
   const { id = "" } = useLocalSearchParams<{ id?: string }>();
 
   const query = useContact(id);
+  const recordings = useContactRecordings(id);
   const archive = useArchiveContact();
   const remove = useDeleteContact();
+
+  const [logOpen, setLogOpen] = React.useState(false);
 
   const goBack = () => router.replace("/contacts");
   const data = query.data;
@@ -220,21 +231,58 @@ export default function ContactDetailScreen() {
               </Block>
             ) : null}
 
-            {data.interactions && data.interactions.length > 0 ? (
-              <Block title="Recent activity">
-                {data.interactions.slice(0, 5).map((i) => (
-                  <View key={i.id} className="gap-0.5">
-                    <Text className="font-sans-medium text-[13px] text-card-foreground">
-                      {i.type}
-                    </Text>
-                    <Text className="font-sans text-xs text-muted-foreground">
-                      {formatDateCompact(i.occurredAt)}
-                      {i.summary ? ` · ${i.summary}` : ""}
-                    </Text>
-                  </View>
+            {recordings.data?.recordings.length ? (
+              <Block title={`Call recordings (${recordings.data.totalCount})`}>
+                {recordings.data.recordings.map((r) => (
+                  <Pressable
+                    key={r.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={r.title ?? "Call recording"}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/recordings/[source]/[id]",
+                        params: { source: "call", id: r.id },
+                      })
+                    }
+                    className="flex-row items-start gap-2.5 active:opacity-70"
+                  >
+                    <Phone size={14} color="#AD5100" strokeWidth={2} style={{ marginTop: 3 }} />
+                    <View className="min-w-0 flex-1">
+                      <Text
+                        numberOfLines={1}
+                        className="font-sans-medium text-[13px] text-card-foreground"
+                      >
+                        {r.title || "Call recording"}
+                      </Text>
+                      <Text className="font-sans text-xs text-muted-foreground">
+                        {formatDateCompact(r.occurredAt)}
+                        {r.callNumber ? ` · From ${r.callNumber}` : ""}
+                        {r.receiverNumber ? ` → ${r.receiverNumber}` : ""}
+                      </Text>
+                      {r.summary ? (
+                        <Text
+                          numberOfLines={2}
+                          className="font-sans text-xs leading-[17px] text-muted-foreground"
+                        >
+                          {r.summary}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
                 ))}
               </Block>
             ) : null}
+
+            <InteractionsBlock
+              contactId={id}
+              onLog={() => setLogOpen(true)}
+              fallback={data.interactions}
+            />
+
+            <ContactOverview
+              contact={data}
+              recordingCount={recordings.data?.totalCount}
+            />
 
             <View className="flex-row gap-2 pt-1">
               <DangerButton
@@ -254,7 +302,87 @@ export default function ContactDetailScreen() {
           </>
         )}
       </ScrollView>
+
+      {data ? (
+        <LogInteractionSheet
+          contactId={id}
+          contactName={data.name}
+          visible={logOpen}
+          onClose={() => setLogOpen(false)}
+        />
+      ) : null}
     </Screen>
+  );
+}
+
+/**
+ * Interactions, with the button to add one.
+ *
+ * Reads its own query rather than the detail response's `interactions` — the
+ * detail caps at 50 and doesn't refresh when you log something, so this owns
+ * the list and `fallback` only covers the first paint.
+ */
+function InteractionsBlock({
+  contactId,
+  onLog,
+  fallback,
+}: {
+  contactId: string;
+  onLog: () => void;
+  fallback?: { id: string; type: string; occurredAt: string; summary: string | null }[];
+}) {
+  const query = useContactInteractions(contactId);
+  const items = query.data?.interactions ?? fallback ?? [];
+
+  return (
+    <View className="gap-2">
+      <View className="flex-row items-center justify-between">
+        <Text className="font-sans-semibold text-xs uppercase tracking-wide text-muted-foreground">
+          Interactions
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Log an interaction"
+          onPress={onLog}
+          hitSlop={8}
+          className="flex-row items-center gap-1 active:opacity-70"
+        >
+          <Plus size={14} color="#AD5100" strokeWidth={2.4} />
+          <Text className="font-sans-medium text-[13px] text-primary-strong">
+            Log
+          </Text>
+        </Pressable>
+      </View>
+
+      <View className="gap-3 rounded-lg border border-border bg-card p-4">
+        {items.length === 0 ? (
+          <Text className="font-sans text-sm text-muted-foreground">
+            No interactions logged yet.
+          </Text>
+        ) : (
+          items.slice(0, 8).map((i) => (
+            <View key={i.id} className="flex-row gap-2.5">
+              <View className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+              <View className="min-w-0 flex-1">
+                <Text className="font-sans-medium text-[13px] text-card-foreground">
+                  {INTERACTION_LABELS[
+                    i.type as keyof typeof INTERACTION_LABELS
+                  ] ?? i.type}
+                </Text>
+                <Text className="font-sans text-xs text-muted-foreground">
+                  {formatDateCompact(i.occurredAt)}
+                </Text>
+                {i.summary ? (
+                  <Text className="font-sans text-[13px] leading-[19px] text-card-foreground">
+                    {i.summary}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+    </View>
   );
 }
 

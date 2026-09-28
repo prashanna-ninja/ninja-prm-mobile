@@ -62,6 +62,7 @@ export { default as CalendarDays } from "lucide-react-native/icons/calendar-days
 export { default as CircleCheck } from "lucide-react-native/icons/circle-check";
 export { default as Heart } from "lucide-react-native/icons/heart";
 export { default as MapPin } from "lucide-react-native/icons/map-pin";
+export { default as MessageSquare } from "lucide-react-native/icons/message-square";
 export { default as Plus } from "lucide-react-native/icons/plus";
 export { default as SlidersHorizontal } from "lucide-react-native/icons/sliders-horizontal";
 export { default as Trash } from "lucide-react-native/icons/trash";
