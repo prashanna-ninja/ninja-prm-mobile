@@ -32,9 +32,14 @@ export default function SignInScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, backgroundColor: AUTH.sheet }}
       >
-        <View style={{ paddingTop: insets.top }}>
-          <AuthHero title={heroTitle} subtitle={heroSubtitle} />
-        </View>
+        {/* The inset goes INTO the hero, not a wrapper around it — a padded
+            wrapper would be transparent and show this ScrollView's white
+            content container as a band above the orange. */}
+        <AuthHero
+          title={heroTitle}
+          subtitle={heroSubtitle}
+          topInset={insets.top}
+        />
 
         {/* The sheet pulls up over the hero's bottom edge — that overlap is
             what ties the two zones together without needing a shadow. */}

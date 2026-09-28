@@ -14,18 +14,31 @@ import { FadeIn } from "@/components/login/fade-in";
 export function AuthHero({
   title,
   subtitle,
+  topInset = 0,
 }: {
   title: string;
   subtitle: string;
+  /**
+   * The safe-area top inset, absorbed into the gradient's own padding.
+   *
+   * ⚠️ The gradient MUST paint this area itself. Wrapping the hero in a
+   * padded <View> instead leaves that strip transparent, and it then shows
+   * whatever is behind — on the sign-in screen that's the ScrollView's white
+   * content container, i.e. a white band above the orange on every notched
+   * iPhone.
+   */
+  topInset?: number;
 }) {
   return (
     <LinearGradient
       colors={[AUTH.heroTop, AUTH.heroBottom]}
       start={{ x: 0.1, y: 0 }}
       end={{ x: 0.9, y: 1 }}
-      // paddingTop sits on top of the safe-area inset the screen already
-      // applies, so the logo clears the status bar with room to breathe.
-      style={{ paddingHorizontal: 26, paddingTop: 28, paddingBottom: 44 }}
+      style={{
+        paddingHorizontal: 26,
+        paddingTop: topInset + 28,
+        paddingBottom: 44,
+      }}
     >
       <FadeIn delay={40}>
         <Image
