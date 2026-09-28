@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { AppHeader } from "@/components/app-header";
 import { AudioPlayer } from "@/components/recordings/audio-player";
 import { RecordingActions } from "@/components/recordings/recording-actions";
+import { RecordingDetails } from "@/components/recordings/recording-details";
 import { Screen } from "@/components/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
@@ -168,6 +169,10 @@ export default function RecordingDetailScreen() {
                 {data.summary || "No summary yet"}
               </Text>
             </Block>
+
+            {/* Per-source extras: call numbers, Plaud topics, Granola
+                attendees, Fieldy keywords/quotes. Self-hides when empty. */}
+            <RecordingDetails recording={data} />
 
             <Block title="Action items">
               {data.actionItems.length > 0 ? (

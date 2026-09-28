@@ -55,6 +55,23 @@ export { default as Share2 } from "lucide-react-native/icons/share-2";
 export { default as Mails } from "lucide-react-native/icons/mails";
 export { default as UserRoundPlus } from "lucide-react-native/icons/user-round-plus";
 
+/* contacts */
+export { default as Archive } from "lucide-react-native/icons/archive";
+export { default as Building } from "lucide-react-native/icons/building";
+export { default as CalendarDays } from "lucide-react-native/icons/calendar-days";
+export { default as CircleCheck } from "lucide-react-native/icons/circle-check";
+export { default as Heart } from "lucide-react-native/icons/heart";
+export { default as MapPin } from "lucide-react-native/icons/map-pin";
+export { default as Plus } from "lucide-react-native/icons/plus";
+export { default as SlidersHorizontal } from "lucide-react-native/icons/sliders-horizontal";
+export { default as Trash } from "lucide-react-native/icons/trash";
+export { default as Users } from "lucide-react-native/icons/users";
+
+/* per-source recording details */
+export { default as ExternalLink } from "lucide-react-native/icons/external-link";
+export { default as Quote } from "lucide-react-native/icons/quote";
+export { default as Tag } from "lucide-react-native/icons/tag";
+
 /* list + detail affordances */
 export { default as FileText } from "lucide-react-native/icons/file-text";
 export { default as Search } from "lucide-react-native/icons/search";

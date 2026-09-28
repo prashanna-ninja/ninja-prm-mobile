@@ -3,7 +3,7 @@ import { Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { House, Library, Settings } from "@/lib/icons";
+import { House, Library, Settings, Users } from "@/lib/icons";
 
 /** Logged-IN shell: Home · Recordings · Settings. */
 export default function AppLayout() {
@@ -91,6 +91,15 @@ export default function AppLayout() {
           title: "Recordings",
           tabBarIcon: ({ color }) => (
             <Library size={22} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="contacts"
+        options={{
+          title: "Contacts",
+          tabBarIcon: ({ color }) => (
+            <Users size={22} color={color} strokeWidth={2} />
           ),
         }}
       />

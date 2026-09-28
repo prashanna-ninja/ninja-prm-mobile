@@ -22,7 +22,7 @@
     "better-auth": "^1.4.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
-    "expo": "~57.0.24",
+    "expo": "~57.0.25",
     "expo-asset": "~57.0.17",
     "expo-audio": "~57.0.5",
     "expo-clipboard": "~57.0.2",
@@ -32,11 +32,11 @@
     "expo-font": "~57.0.4",
     "expo-image": "~57.0.5",
     "expo-linear-gradient": "~57.0.2",
-    "expo-linking": "~57.0.10",
+    "expo-linking": "~57.0.11",
     "expo-network": "~57.0.2",
-    "expo-router": "~57.0.22",
+    "expo-router": "~57.0.23",
     "expo-secure-store": "~57.0.4",
-    "expo-sharing": "~57.0.21",
+    "expo-sharing": "~57.0.22",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.4",
@@ -65,9 +65,11 @@
   },
   "expo": {
     "autolinking": {
-      "exclude": [
-        "@expo/ui"
-      ]
+      "ios": {
+        "exclude": [
+          "@expo/ui"
+        ]
+      }
     }
   }
 }

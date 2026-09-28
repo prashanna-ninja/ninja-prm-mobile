@@ -14,6 +14,12 @@ import type {
 export const qk = {
   me: () => ["me"] as const,
 
+  contacts: {
+    all: () => ["contacts"] as const,
+    list: (params: object) => ["contacts", "list", params] as const,
+    detail: (id: string) => ["contacts", "detail", id] as const,
+  },
+
   recordings: {
     all: () => ["recordings"] as const,
     stats: () => ["recordings", "stats"] as const,
