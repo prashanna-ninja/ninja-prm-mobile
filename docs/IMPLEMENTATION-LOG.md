@@ -8,6 +8,58 @@ cheap; write it while the reasoning is still fresh.
 
 ---
 
+## 2026-09-29 — Session 7: Tasks, the fifth tab
+
+Contacts went out on iOS without the assign-a-recording backend change. The user then widened
+the scope a third time: "we will be also starting todo and tasks". Todo and Tasks are the same
+thing — the PRM has one `Task` model, and recording action items already become tasks on the
+server (`lib/recordings/auto-tasks.ts`, all four sources). Spec: `docs/features/FEAT-03-TASKS.md`.
+
+### Added
+
+- **Tasks tab** (`(app)/tasks/`): list, `new`, `[id]`, `[id]/edit`. The list's `_layout`
+  sets `initialRouteName: "index"` so a task opened from a contact still has the list under it.
+- `api/tasks.api.ts`, `types/task.types.ts`, `lib/tasks.ts` (due-day maths, HTML ⇄ text),
+  `qk.tasks.*`, and `components/tasks/` (row, tick, badges, filters, form, due-date field,
+  contact picker sheet). Nine icons added to `lib/icons.ts`.
+- **Contact detail:** the Open tasks block is always shown, rows open the task (Back returns to
+  the contact via `fromContact`), and **＋ Task** creates one pre-linked.
+- `docs/prompts/BACKEND-TASK-PATCH-FIX.md` and `BACKEND-CHANGES` §10.
+
+### Decisions
+
+| Decision | Why |
+| -------- | --- |
+| **Write local noon; read by rounding to the nearest local midnight** | The server keeps only the calendar day, read in the user's *profile* timezone. We have no tz database and Hermes' Intl is unreliable on Android. Noon survives any ±12h phone/profile mismatch on the way in; nearest-midnight recovers the day on the way out. |
+| **A plain-JS month grid, not `@react-native-community/datetimepicker`** | That's a native module — a new native build and per-platform behaviour — for a date-only field. Keeping Tasks pure JS means it tests on the existing dev build with a Metro reload. |
+| **The To do view groups by due date; Done/All sort by last updated** | The API sorts `dueAt asc` with NULLs last, so the groups (Overdue → No due date) arrive in order and headings fall out row by row across pages. |
+| **Optimistic tick, and only the tick** | A checkbox that waits a round-trip reads as broken. It's instant and trivially reversible — the bar in docs/06 for going optimistic. |
+| **Edit sends only changed fields** | Two reasons: an untouched description keeps the web's rich-text HTML intact, and `contactIds` (which triggers the server's delete-then-recreate) only goes out when the set really changed. |
+| **Priority pill only for High / Low** | Normal is nearly every task; a grey pill on every row is noise. |
+
+### Found along the way
+
+- 🐛 **Contact detail showed "Due 12:00 am" for a task due today.** It formatted `dueAt` with
+  `formatDateCompact`, which prints a *time* for today — and a due date is a midnight instant.
+  Now uses `formatDueDay`.
+- 🚨 The task PATCH data-loss bug (known) — confirmed at the line level in both `ref/prm` and
+  `../ninja_prm` (the file is identical). Unreachable from the app; written up, not fixed.
+- `sourceType` includes `fieldy` despite the schema comment saying `call | plaud | granola`.
+- ⚠️ **`npm run lint` is a trap.** No ESLint is configured, so `expo lint` *installs and
+  configures one*: it touched `package.json`, rewrote `package-lock.json` and created
+  `eslint.config.js`. Reverting was blocked by a permission prompt — **still in the working
+  tree**, see HANDOVER.
+
+### Verified vs. not
+
+- ✅ `npx tsc --noEmit` clean, with typed routes regenerated (they were stale until an
+  `expo start`).
+- ✅ `npx expo export --platform android` — bundle builds, 5.8MB.
+- ❌ **Nothing device-verified.** Not the tick, not the date round-trip to the web, not the
+  cross-tab Back behaviour, not dark mode. Checklist: FEAT-03 §4.
+
+---
+
 ## 2026-09-29 — Session 6: the icon master moved into this repo
 
 The wordmark was redrawn by hand (bigger PRM, different face) and dropped in as

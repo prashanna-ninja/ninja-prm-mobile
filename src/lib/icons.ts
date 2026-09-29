@@ -68,6 +68,17 @@ export { default as SlidersHorizontal } from "lucide-react-native/icons/sliders-
 export { default as Trash } from "lucide-react-native/icons/trash";
 export { default as Users } from "lucide-react-native/icons/users";
 
+/* tasks */
+export { default as CalendarX } from "lucide-react-native/icons/calendar-x";
+export { default as ChevronLeft } from "lucide-react-native/icons/chevron-left";
+export { default as Circle } from "lucide-react-native/icons/circle";
+export { default as CircleCheckBig } from "lucide-react-native/icons/circle-check-big";
+export { default as CircleX } from "lucide-react-native/icons/circle-x";
+export { default as Flag } from "lucide-react-native/icons/flag";
+export { default as ListTodo } from "lucide-react-native/icons/list-todo";
+export { default as Pencil } from "lucide-react-native/icons/pencil";
+export { default as Repeat } from "lucide-react-native/icons/repeat";
+
 /* per-source recording details */
 export { default as ExternalLink } from "lucide-react-native/icons/external-link";
 export { default as Quote } from "lucide-react-native/icons/quote";

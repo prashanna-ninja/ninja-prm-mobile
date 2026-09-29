@@ -264,3 +264,29 @@ curl -s "$BASE/api/v1/recordings/call/$ID"                                     -
 
 Do this **before** starting Phase 1. Debugging a new API through a new app on a physical device
 is the slowest possible way to find a typo.
+
+---
+
+## 10. 🚨 `PATCH /api/v1/tasks/[id]` can lose a task's contact links
+
+> **Status 2026-09-29: unfixed. Not reachable from the app** — but reachable from any other
+> client, so it still wants fixing. Paste-ready prompt:
+> [../prompts/BACKEND-TASK-PATCH-FIX.md](../prompts/BACKEND-TASK-PATCH-FIX.md).
+
+In `src/app/api/v1/tasks/[id]/route.ts`, when the body has `contactIds`:
+
+1. `prisma.taskContact.deleteMany({ where: { taskId } })` runs **first** (line ~138);
+2. `dueAt` is only parsed afterwards, inside the `updateData` builder, which **throws**
+   "Invalid due date provided" on a bad value (line ~163);
+3. nothing is wrapped in a transaction, and the catch returns a 500.
+
+So `PATCH { contactIds: [...], dueAt: "not-a-date" }` deletes every link and then fails —
+the task keeps its old title/date but has **no contacts**, and the client is told the save
+failed. The same happens if `task.update` itself throws for any other reason.
+
+**Fix:** validate the whole body up front (including `dueAt` → 400, not 500), then run the
+`deleteMany` and `task.update` inside one `prisma.$transaction`.
+
+**Why the app is safe today:** it only ever sends a `dueAt` it built itself
+(`dueAtForDay` in `src/lib/tasks.ts`), and only sends `contactIds` when the set actually
+changed (`toUpdateTaskInput`). The status tick sends `{ status }` alone.

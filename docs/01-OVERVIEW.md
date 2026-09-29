@@ -16,13 +16,15 @@ taking the one thing that is genuinely better on a phone and building it properl
    transcript.
 4. **Contacts** — list with search and relationship filter, create, detail, and logging an
    interaction. ([FEAT-02](features/FEAT-02-CONTACTS.md))
+5. **Tasks** — the to-do list: open tasks grouped by due date, tick off, create, edit, link to
+   contacts. Recording action items land here automatically. ([FEAT-03](features/FEAT-03-TASKS.md))
 
-Four bottom tabs: **Home · Recordings · Contacts · Settings**.
+Five bottom tabs: **Home · Recordings · Contacts · Tasks · Settings** — the ceiling for a bottom bar.
 
-> **The scope widened twice, both times on request.** It began as Recordings-only with two tabs
-> and Settings as a gear in the Home header. Settings became a tab on 2026-09-23; Contacts was
-> added on 2026-09-28. Neither was drift — but treat the original scoping argument below as
-> history, not policy.
+> **The scope widened three times, every time on request.** It began as Recordings-only with two
+> tabs and Settings as a gear in the Home header. Settings became a tab on 2026-09-23; Contacts
+> was added on 2026-09-28; Tasks on 2026-09-29. None was drift — but treat the original scoping
+> argument below as history, not policy.
 
 Still not built: tasks (backend contracts exist, no screens), calendar, opportunities,
 organizations, integrations, tags. Those are listed in

@@ -4,37 +4,55 @@ A React Native + Expo app for **Ninja PRM**. It reuses the existing Next.js PRM 
 (`ref/prm`) — same database, same Better Auth session, same API. This doc is the single entry
 point: **what exists, how to run it, what to watch out for, and what to do next.**
 
-> ## Status — 2026-09-29
+> ## Status — 2026-09-29 (session 7)
 >
-> **The app is built and on TestFlight.** Magic-link sign-in, Home dashboard, the unified
-> recordings list, per-source detail with audio playback, save / copy / email-share of
-> transcripts, and a Contacts tab (list, create, detail, interaction logging).
+> **Released on iOS:** magic-link sign-in, Home dashboard, the unified recordings list,
+> per-source detail with audio playback, save / copy / email-share of transcripts, and Contacts
+> (list, create, detail, interaction logging) — shipped without the assign-a-recording backend
+> change.
+>
+> **Just built, not yet on a device: Tasks** — the fifth tab. To-do list grouped by due date
+> (Overdue · Today · This week · Later · No due date), optimistic tick-off, To do / Done / All +
+> priority filters, create / edit / cancel / delete, related contacts, and a link back to the
+> recording an auto-generated task came from. Contacts' Open tasks block now opens tasks and
+> can create one pre-linked. **Typecheck clean and the Android bundle exports (5.8MB); nothing
+> device-verified.** Spec: [docs/features/FEAT-03-TASKS.md](docs/features/FEAT-03-TASKS.md).
+> **Pure JS — no native change**, so a Metro reload on the existing dev build is enough to test.
 >
 > Expo SDK 57 + **NativeWind 4.2.7 (v4 stable)** + Tailwind 3.4.17, brand tokens (`#ff8900`),
-> Bricolage Grotesque in 4 weights, persisted light/dark theme. Four tabs: Home · Recordings ·
-> Contacts · Settings.
+> Bricolage Grotesque in 4 weights, persisted light/dark theme. Five tabs: Home · Recordings ·
+> Contacts · Tasks · Settings.
 >
-> **Just changed (not yet in a build):** the app icon's wordmark was redrawn by hand, and
-> `splash-icon.png` + `adaptive-icon.png` were regenerated from it. Icons are native —
-> **this needs an `eas build` to see.**
+> ### ⚠️ Uncommitted junk in the working tree — clean it up first
+>
+> Running `npm run lint` made `expo lint` **auto-install ESLint**: it added `eslint` to
+> `package.json`, rewrote ~7,500 lines of `package-lock.json`, and created `eslint.config.js`.
+> None of that is part of the Tasks work, and the revert was blocked by a permission prompt.
+> Restore with `git checkout -- package.json package-lock.json`, delete `eslint.config.js` and
+> `.verify/`, then `npm ci`. **Lint is not actually configured in this repo** — `npm run lint`
+> is a trap until someone sets it up deliberately.
 >
 > ### What to do next
 >
-> 1. **Android preview build.** The post-splash crash fix (scoping the `@expo/ui` autolinking
+> 1. **Device-test Tasks** — the checklist is FEAT-03 §4. The one that matters most: create a
+>    task with a due date on the phone and confirm the **web** shows the same day (the timezone
+>    handling is reasoned, not observed).
+> 2. **Android preview build.** The post-splash crash fix (scoping the `@expo/ui` autolinking
 >    exclusion to iOS only) is **still unverified**: `eas build --platform android --profile preview`.
->    The icon change rides along.
-> 2. **Assigning a recording to a contact is impossible with today's API.** Confirmed against all
->    54 non-GET handlers in PRM: every recordings route is GET-only except `share`. Needs
->    `PUT /api/v1/recordings/:source/:id/contacts` on the backend — the prompt for it isn't
->    written yet. See `docs/implementation/BACKEND-CHANGES.md` §7.
-> 3. **Tasks UI.** Backend contracts are documented; no screens exist.
+>    The redrawn icon rides along.
+> 3. **Assigning a recording to a contact** still needs `PUT /api/v1/recordings/:source/:id/contacts`
+>    — prompt: `docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md`. Run in `ninja_prm`, ask first.
+> 4. **Task PATCH data-loss bug** (backend hardening, not a blocker — the app can't trigger it):
+>    `docs/prompts/BACKEND-TASK-PATCH-FIX.md`.
+> 5. Maybe: open / overdue task counts on Home (FEAT-03 §5).
 >
 > ### Known, unfixed (backend)
 >
 > - `PATCH /api/v1/tasks/[id]` deletes contact links *before* validating `dueAt`, with no
->   transaction — a bad date loses the links. **Data loss.**
+>   transaction — a bad date loses the links. **Data loss**, but unreachable from the app.
+>   `BACKEND-CHANGES` §10.
 > - `/me` signs the user out during a DB outage (it can't tell "no session" from "no database").
-> - Several endpoints 500 rather than 400 on invalid enum input.
+> - Several endpoints 500 rather than 400 on invalid enum input (tasks: `status`/`priority`).
 
 ---
 
@@ -44,37 +62,27 @@ Paste this in verbatim:
 
 ```
 Read CLAUDE.md and HANDOVER.md. We are picking up Ninja PRM Mobile after the
-2026-09-29 session, which was docs + app icons only - no app source changed.
+2026-09-29 session 7, which built the Tasks tab (FEAT-03). Contacts is released
+on iOS; Tasks has never run on a device.
 
-State: the app is on TestFlight. Four tabs (Home / Recordings / Contacts /
-Settings), magic-link sign-in, audio playback, save/copy/email a transcript,
-and full Contacts. docs/ was audited against the code that session, so it is
-trustworthy again - read it rather than re-deriving from source.
+First: the working tree has ESLint junk from an accidental `expo lint` run -
+see the warning in HANDOVER's status block and clean it up before anything else.
 
-Three live threads, in priority order:
+Then, in priority order:
 
-1. ANDROID PREVIEW BUILD - unverified fix.
+1. DEVICE-TEST TASKS. Pure JS, so Metro reload on the dev build is enough.
+   Checklist: docs/features/FEAT-03-TASKS.md section 4. Most important: a due
+   date set on the phone must show the same day on the web.
+
+2. ANDROID PREVIEW BUILD - unverified post-splash crash fix.
    `eas build --platform android --profile preview`
-   A previous preview crashed right after the splash. Cause: the @expo/ui
-   autolinking exclusion (added for an iOS-only Swift compile error) was
-   global, so Android lost a module it needed. It is now scoped to ios in
-   package.json. Nobody has confirmed the fix. The redrawn app icon rides
-   along in the same build - check both.
 
-2. ASSIGN A RECORDING TO A CONTACT - blocked on the backend.
-   No endpoint exists; verified across all 54 non-GET v1 handlers. The prompt
-   is written: docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md - run it in
-   the ninja_prm repo, not here. The mobile-side work is listed at the bottom
-   of that file. Ask me before starting the backend side.
-
-3. TASKS UI - backend contracts are documented, no screens exist.
-   docs/prompts/BACKEND-CONTACTS-TASKS.md has the shapes. Note the known bug:
-   PATCH /api/v1/tasks/[id] deletes contact links before validating dueAt with
-   no transaction, so a bad date loses them. Fix that before building UI on it.
+3. ASSIGN A RECORDING TO A CONTACT - blocked on the backend.
+   docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md, run in ninja_prm. Ask first.
 
 Before writing any code, read CLAUDE.md's gotcha list - especially 4b
 (never give a Pressable a function style) and 4c (import icons from
-@/lib/icons). Both cost real debugging time.
+@/lib/icons).
 
 Tell me which thread you'd start with and what the first concrete step is.
 Don't write code yet.
@@ -84,8 +92,8 @@ Don't write code yet.
 
 ## 1. What we're building
 
-v1 started as **Recordings and nothing else**; Contacts was added on 2026-09-28 at the user's
-request. Four bottom tabs:
+v1 started as **Recordings and nothing else**; Contacts was added on 2026-09-28 and Tasks on
+2026-09-29, both at the user's request. Five bottom tabs — the ceiling:
 
 | Tab | Screen | What's on it |
 | --- | ------ | ------------ |
@@ -94,17 +102,19 @@ request. Four bottom tabs:
 | — | `(app)/recordings/[source]/[id]` | Recording detail — summary, action items, contacts, transcript, source-specific extras, audio player, save / copy / email-share |
 | **Contacts** | `(app)/contacts/index` | List with search + relationship filter, and **New** |
 | — | `(app)/contacts/[id]` | Overview counters, interactions, call recordings, log-an-interaction |
+| **Tasks** | `(app)/tasks/index` | To-do list grouped by due date, tick off, To do / Done / All + priority, **New** |
+| — | `(app)/tasks/[id]` | Detail — due, notes, related contacts, source recording, cancel / reopen / delete |
+| — | `(app)/tasks/[id]/edit` · `new` | Create / edit form, with a contact picker and a JS date grid |
 | **Settings** | `(app)/settings` | Account, theme, sign out |
-
-Tasks is specced on the backend but **has no screens**.
 
 Plus magic-link sign-in that opens **straight into the app** from the email.
 
 Recordings come from four sources — `call`, `plaud`, `granola`, `fieldy` — merged into one feed.
 Calls and Plaud have audio; Granola and Fieldy are text only.
 
-Full specs: **[docs/features/FEAT-01-RECORDINGS.md](docs/features/FEAT-01-RECORDINGS.md)** and
-**[docs/features/FEAT-02-CONTACTS.md](docs/features/FEAT-02-CONTACTS.md)**.
+Full specs: **[docs/features/FEAT-01-RECORDINGS.md](docs/features/FEAT-01-RECORDINGS.md)**,
+**[docs/features/FEAT-02-CONTACTS.md](docs/features/FEAT-02-CONTACTS.md)** and
+**[docs/features/FEAT-03-TASKS.md](docs/features/FEAT-03-TASKS.md)**.
 
 ---
 
@@ -275,6 +285,8 @@ Plus two specific to this app:
 | [docs/05-AUTH-DEEPLINK.md](docs/05-AUTH-DEEPLINK.md) | Magic link → deep link → signed in |
 | [docs/06-DATA-LAYER.md](docs/06-DATA-LAYER.md) | TanStack Query: keys, caching, invalidation |
 | [docs/features/FEAT-01-RECORDINGS.md](docs/features/FEAT-01-RECORDINGS.md) | **The v1 spec** — screens, states, done criteria |
+| [docs/features/FEAT-02-CONTACTS.md](docs/features/FEAT-02-CONTACTS.md) | Contacts |
+| [docs/features/FEAT-03-TASKS.md](docs/features/FEAT-03-TASKS.md) | Tasks — the to-do list, and its wire-format traps |
 | [docs/implementation/IMPLEMENTATION-PLAN.md](docs/implementation/IMPLEMENTATION-PLAN.md) | Phased build order + definition of done |
 | [docs/implementation/BACKEND-CHANGES.md](docs/implementation/BACKEND-CHANGES.md) | What `ref/prm` needs |
 | [docs/IMPLEMENTATION-LOG.md](docs/IMPLEMENTATION-LOG.md) | Chronological diary of changes & decisions |

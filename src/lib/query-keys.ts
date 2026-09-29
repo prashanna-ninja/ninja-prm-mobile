@@ -22,6 +22,13 @@ export const qk = {
     recordings: (id: string) => ["contacts", "recordings", id] as const,
   },
 
+  tasks: {
+    all: () => ["tasks"] as const,
+    lists: () => ["tasks", "list"] as const,
+    list: (params: object) => ["tasks", "list", params] as const,
+    detail: (id: string) => ["tasks", "detail", id] as const,
+  },
+
   recordings: {
     all: () => ["recordings"] as const,
     stats: () => ["recordings", "stats"] as const,

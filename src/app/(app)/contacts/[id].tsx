@@ -34,6 +34,7 @@ import {
   ArrowLeft,
   Building,
   CalendarDays,
+  ChevronRight,
   CircleCheck,
   Heart,
   Mail,
@@ -42,7 +43,8 @@ import {
   Plus,
   Trash,
 } from "@/lib/icons";
-import { parseStringList } from "@/types/contact.types";
+import { DUE_COLORS, dueState, formatDueDay } from "@/lib/tasks";
+import { parseStringList, type ContactTask } from "@/types/contact.types";
 
 export default function ContactDetailScreen() {
   const router = useRouter();
@@ -206,30 +208,22 @@ export default function ContactDetailScreen() {
               </Block>
             ) : null}
 
-            {openTasks.length > 0 ? (
-              <Block title={`Open tasks (${openTasks.length})`}>
-                {openTasks.map((task) => (
-                  <View key={task.id} className="flex-row items-start gap-2.5">
-                    <CircleCheck
-                      size={15}
-                      color="#A1A1AA"
-                      strokeWidth={2}
-                      style={{ marginTop: 2 }}
-                    />
-                    <View className="min-w-0 flex-1">
-                      <Text className="font-sans text-sm text-card-foreground">
-                        {task.title}
-                      </Text>
-                      {task.dueAt ? (
-                        <Text className="font-sans text-xs text-muted-foreground">
-                          Due {formatDateCompact(task.dueAt)}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
-                ))}
-              </Block>
-            ) : null}
+            <OpenTasksBlock
+              tasks={openTasks}
+              onOpen={(taskId) =>
+                router.push({
+                  pathname: "/tasks/[id]",
+                  params: { id: taskId, fromContact: id },
+                })
+              }
+              onAdd={() =>
+                router.push({
+                  pathname: "/tasks/new",
+                  params: { contactId: id, contactName: data.name },
+                })
+              }
+            />
+
 
             {recordings.data?.recordings.length ? (
               <Block title={`Call recordings (${recordings.data.totalCount})`}>
@@ -380,6 +374,85 @@ function InteractionsBlock({
               </View>
             </View>
           ))
+        )}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The contact's open tasks, from the detail response — which caps them at 5
+ * and only includes OPEN ones (see the route's `taskContacts` include).
+ */
+function OpenTasksBlock({
+  tasks,
+  onOpen,
+  onAdd,
+}: {
+  tasks: ContactTask[];
+  onOpen: (taskId: string) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <View className="gap-2">
+      <View className="flex-row items-center justify-between">
+        <Text className="font-sans-semibold text-xs uppercase tracking-wide text-muted-foreground">
+          {tasks.length > 0 ? `Open tasks (${tasks.length})` : "Open tasks"}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add a task"
+          onPress={onAdd}
+          hitSlop={8}
+          className="flex-row items-center gap-1 active:opacity-70"
+        >
+          <Plus size={14} color="#AD5100" strokeWidth={2.4} />
+          <Text className="font-sans-medium text-[13px] text-primary-strong">
+            Task
+          </Text>
+        </Pressable>
+      </View>
+
+      <View className="gap-3 rounded-lg border border-border bg-card p-4">
+        {tasks.length === 0 ? (
+          <Text className="font-sans text-sm text-muted-foreground">
+            Nothing open for this contact.
+          </Text>
+        ) : (
+          tasks.map((task) => {
+            const state = dueState(task);
+            return (
+              <Pressable
+                key={task.id}
+                accessibilityRole="button"
+                accessibilityLabel={task.title}
+                onPress={() => onOpen(task.id)}
+                className="flex-row items-start gap-2.5 active:opacity-70"
+              >
+                <CircleCheck
+                  size={15}
+                  color="#A1A1AA"
+                  strokeWidth={2}
+                  style={{ marginTop: 2 }}
+                />
+                <View className="min-w-0 flex-1">
+                  <Text className="font-sans text-sm text-card-foreground">
+                    {task.title}
+                  </Text>
+                  {task.dueAt ? (
+                    <Text
+                      className="font-sans text-xs"
+                      style={{ color: state ? DUE_COLORS[state] : undefined }}
+                    >
+                      {state === "overdue" ? "Overdue · " : "Due "}
+                      {formatDueDay(task.dueAt)}
+                    </Text>
+                  ) : null}
+                </View>
+                <ChevronRight size={15} color="#A1A1AA" strokeWidth={2} style={{ marginTop: 2 }} />
+              </Pressable>
+            );
+          })
         )}
       </View>
     </View>

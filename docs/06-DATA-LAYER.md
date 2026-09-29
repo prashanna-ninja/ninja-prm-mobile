@@ -77,6 +77,13 @@ export const qk = {
     recordings:   (id: string) => ["contacts", "recordings", id] as const,
   },
 
+  tasks: {
+    all:    ()               => ["tasks"] as const,
+    lists:  ()               => ["tasks", "list"] as const,   // prefix for optimistic writes
+    list:   (params: object) => ["tasks", "list", params] as const,
+    detail: (id: string)     => ["tasks", "detail", id] as const,
+  },
+
   recordings: {
     all:    ()                          => ["recordings"] as const,
     stats:  ()                          => ["recordings", "stats"] as const,
@@ -257,8 +264,17 @@ onSuccess: () => {
 
 `useShareTranscript` invalidates nothing — sending an email changes no cached server state.
 
-Optimistic updates: none so far, and only ever where the action is instant and obviously
-reversible. **Never optimistic on anything that sends an email or costs money.**
+```ts
+// tasks.api.ts - every task write invalidates tasks AND contacts: contact
+// rows count tasks, and the contact detail embeds its open ones.
+void qc.invalidateQueries({ queryKey: qk.tasks.all() });
+void qc.invalidateQueries({ queryKey: qk.contacts.all() });
+```
+
+Optimistic updates: **one** — `useSetTaskStatus`, the task tick. It rewrites the row in every
+cached list (`setQueriesData` on `qk.tasks.lists()`) and the detail, then invalidates on settle,
+which both restores the truth on failure and moves the row into the right filter. Only ever do
+this where the action is instant and obviously reversible. **Never optimistic on anything that sends an email or costs money.**
 
 Sign-out calls `queryClient.clear()` (`providers/session-provider.tsx`). Without it, the next
 user on the device sees the previous user's recordings — call transcripts — until each query

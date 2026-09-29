@@ -25,14 +25,15 @@ When the two disagree about *how to build it*, `ninja-crm-mobile` wins. When the
 
 ## The rules
 
-1. **Scope is Recordings + Contacts — and nothing else.** Four bottom tabs: **Home** (recording
-   stats + recent + "View all"), **Recordings** (the unified list, detail, audio playback),
-   **Contacts** (list, create, detail, log an interaction) and **Settings**. Contacts was added
-   on 2026-09-28 at the user's request; it was **not** in the original v1 scope, and Settings
-   became a tab rather than a gear in Home's header on 2026-09-23. Tasks is specced on the
-   backend and deliberately has no screens. Nothing else gets built without being asked — the
-   scope has widened twice already, both times explicitly. See
-   `docs/features/FEAT-01-RECORDINGS.md` and `docs/features/FEAT-02-CONTACTS.md`.
+1. **Scope is Recordings + Contacts + Tasks — and nothing else.** Five bottom tabs: **Home**
+   (recording stats + recent + "View all"), **Recordings** (the unified list, detail, audio
+   playback), **Contacts** (list, create, detail, log an interaction), **Tasks** (the to-do list:
+   list, create, edit, tick off) and **Settings**. None of Contacts (2026-09-28), Tasks
+   (2026-09-29) or the Settings tab (2026-09-23) was in the original v1 scope — each was added
+   at the user's request. **Five tabs is the ceiling**; anything more needs a different
+   navigation shape. Nothing else gets built without being asked — the scope has widened three
+   times, every time explicitly. See `docs/features/FEAT-01-RECORDINGS.md`,
+   `FEAT-02-CONTACTS.md` and `FEAT-03-TASKS.md`.
 2. **Primary colour is `#ff8900`.** Everything else in the palette comes from the PRM web app
    (`ref/prm/src/app/globals.css`). The web app's blue primary is the *only* token we deliberately
    replace. See `docs/03-DESIGN-SYSTEM.md`.

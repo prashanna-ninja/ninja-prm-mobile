@@ -3,9 +3,13 @@ import { Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { House, Library, Settings, Users } from "@/lib/icons";
+import { House, Library, ListTodo, Settings, Users } from "@/lib/icons";
 
-/** Logged-IN shell: Home · Recordings · Settings. */
+/**
+ * Logged-IN shell: Home · Recordings · Contacts · Tasks · Settings.
+ * Five is the ceiling for a bottom bar — a sixth section needs a different
+ * navigation shape, not a sixth tab.
+ */
 export default function AppLayout() {
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
@@ -100,6 +104,15 @@ export default function AppLayout() {
           title: "Contacts",
           tabBarIcon: ({ color }) => (
             <Users size={22} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="tasks"
+        options={{
+          title: "Tasks",
+          tabBarIcon: ({ color }) => (
+            <ListTodo size={22} color={color} strokeWidth={2} />
           ),
         }}
       />

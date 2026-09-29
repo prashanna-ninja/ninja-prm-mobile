@@ -20,6 +20,7 @@ One doc per feature. A feature doc is the spec: scope, screens, data, states, do
 
 - [features/FEAT-01-RECORDINGS.md](features/FEAT-01-RECORDINGS.md) — **Recordings** (the original v1 scope)
 - [features/FEAT-02-CONTACTS.md](features/FEAT-02-CONTACTS.md) — **Contacts** (added 2026-09-28, outside the original scope)
+- [features/FEAT-03-TASKS.md](features/FEAT-03-TASKS.md) — **Tasks**, the to-do list (added 2026-09-29, outside the original scope)
 
 ## Implementation
 

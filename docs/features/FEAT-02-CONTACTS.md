@@ -109,6 +109,7 @@ Every mutation invalidates `qk.contacts.all()`; logging an interaction also inva
   [../implementation/BACKEND-CHANGES.md](../implementation/BACKEND-CHANGES.md) §7 and
   [../prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md](../prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md).
 - **No edit screen.** `useUpdateContact` is wired and unused.
-- **Tasks are read-only here** — open tasks render on the detail screen, but there is no Tasks
-  feature and no way to create or complete one.
+- ~~Tasks are read-only here.~~ Fixed 2026-09-29 by [FEAT-03](FEAT-03-TASKS.md): open tasks are
+  tappable and **＋ Task** creates one pre-linked to the contact. The block still shows at most
+  5, OPEN only — that's the detail route's `taskContacts` include.
 - **Companies and tags can't be created** from the app; only picked if they already exist.
