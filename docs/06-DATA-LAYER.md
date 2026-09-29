@@ -67,20 +67,33 @@ working.
 ```ts
 // src/lib/query-keys.ts
 export const qk = {
-  me: () => ["me"] as const,
+  me: () => ["me"] as const,          // ⚠️ defined but UNUSED - see below
+
+  contacts: {
+    all:          ()           => ["contacts"] as const,
+    list:         (params: object) => ["contacts", "list", params] as const,
+    detail:       (id: string) => ["contacts", "detail", id] as const,
+    interactions: (id: string) => ["contacts", "interactions", id] as const,
+    recordings:   (id: string) => ["contacts", "recordings", id] as const,
+  },
 
   recordings: {
     all:    ()                          => ["recordings"] as const,
     stats:  ()                          => ["recordings", "stats"] as const,
-    list:   (params: RecordingListParams) => ["recordings", "list", params] as const,
+    // NOTE: normalisation happens INSIDE the key, not at the call site.
+    list:   (params: RecordingListParams) =>
+      ["recordings", "list", normalizeListParams(params)] as const,
     detail: (source: RecordingSource, id: string) => ["recordings", "detail", source, id] as const,
     audio:  (source: RecordingSource, id: string) => ["recordings", "audio", source, id] as const,
   },
-
-  recordingCategories: () => ["recording-categories"] as const,
-  contacts: { list: (search: string) => ["contacts", "list", search] as const },
 } as const;
 ```
+
+> **`qk.me()` is dead.** It's defined but nothing calls it, and there is no `api/auth.api.ts`.
+> The signed-in user comes from `src/providers/session-provider.tsx`, which holds the session in
+> plain `useState` — deliberately **not** `authClient.useSession()`, which tripped React 19's
+> tearing detection on every launch. Don't reintroduce a `useMe` query without reading
+> `docs/05` first.
 
 Rules:
 
@@ -90,8 +103,11 @@ Rules:
 - **The whole params object goes in the list key.** Search, source, sort and page all change the
   key structurally, so changing a filter is a cache miss → refetch, and going back is a cache hit
   → instant. No manual refetch plumbing.
-- **Normalise params before they hit the key.** Trim the search string, apply defaults. `{search: ""}`
-  and `{}` must produce the same key or you double the cache for nothing.
+- **Normalise params before they hit the key.** Trim the search string, apply defaults.
+  `{search: ""}` and `{}` must produce the same key or you double the cache for nothing — and
+  every keystroke that clears the search box becomes a refetch. `normalizeListParams()` lives in
+  the same file and is applied **inside** `recordings.list()`, so a caller cannot forget it.
+  The contacts list key does **not** normalise; it takes the params object as-is.
 
 ---
 
@@ -132,9 +148,10 @@ Stale times are a product decision, not a default. For v1:
 | Recordings **list** | `30s` | New recordings arrive by webhook/sync; the user pulls to refresh when they want *now*. |
 | Recording **detail** | `5 min` | A finished recording barely changes. Summaries/transcripts backfill occasionally. |
 | Recording **audio URL** | `50 min`, `gcTime` 1h | Presigned URLs expire (~1h). Cache *below* the expiry so we never hand the player a dead URL. Set both from `expiresInSec` when the API returns it. |
-| Categories | `10 min` | Rarely change. |
-| `me` | `5 min` | Name/email/avatar for the settings screen. |
-| Contacts (picker) | `2 min` | Only fetched when a picker opens. |
+| Contacts — list, detail, interactions, per-contact recordings | **none set** | They fall through to the 30s client default. Not a considered decision; just never revisited. If contacts start feeling stale-then-flickery, this table is where to fix it. |
+
+Two rows that were planned and never built: `recording-categories` (no endpoint, no hook, no key)
+and a `me` query (see the note in §2 — the session provider owns the user instead).
 
 ---
 
@@ -152,7 +169,8 @@ const params = { search: debouncedSearch.trim(), source, ...sort };
 const { data, isPending, isError, error, refetch, isRefetching } = useRecordings(params);
 ```
 
-- `placeholderData: keepPreviousData` on the list so changing a filter doesn't flash a skeleton
+- `placeholderData: (prev) => prev` on the list so changing a filter doesn't flash a skeleton
+  (both `useInfiniteRecordings` and `useInfiniteContacts` do this)
   over content that's about to be replaced.
 - Pull-to-refresh wires `refreshing={isRefetching}` / `onRefresh={refetch}`.
 - **Four states, always:** `isPending` → skeleton · `isError` → message + Retry · empty array →
@@ -198,7 +216,8 @@ Each block owns its own loading/error UI. Pull-to-refresh refetches both.
 
 ### Detail screen — seed from the list
 
-Going list → detail should render instantly, not flash a spinner for data we already have:
+> ⏳ **Not implemented.** `useRecording` has no `placeholderData`; list → detail still shows a
+> skeleton for data already in the cache. Kept here because it's still the right idea.
 
 ```ts
 const qc = useQueryClient();
@@ -207,23 +226,43 @@ useRecording(source, id, {
 });
 ```
 
-Show the seeded fields immediately, and let transcript / action items / audio fill in.
+### Lazy fetch — don't fetch until the user asks
 
-### Mutations (when we add writes)
+The audio URL is presigned and expires. Fetching it eagerly on every detail view burns links and
+risks handing the player a stale one, so the query is **disabled** and pulled on demand:
 
 ```ts
-const qc = useQueryClient();
-useMutation({
-  mutationFn: (id: string) => apiFetch(`/api/v1/recordings/${source}/${id}/archive`, { method: "POST" }),
-  onSuccess: (_d, id) => {
-    qc.invalidateQueries({ queryKey: qk.recordings.all() });     // lists + counts
-    qc.invalidateQueries({ queryKey: qk.recordings.detail(source, id) });
-  },
-});
+const audio = useRecordingAudio(source, id);   // { enabled: false }
+const onPlay = async () => {
+  const { data } = await audio.refetch();
+  // ... hand data.url to the player
+};
 ```
 
-Optimistic updates only where the action is instant and obviously reversible (archive, category).
-Never optimistic on anything that sends an email or costs money.
+### Mutations
+
+The invalidation convention, as actually shipped:
+
+```ts
+// contacts.api.ts - every contact mutation nukes the whole contacts subtree.
+onSuccess: () => qc.invalidateQueries({ queryKey: qk.contacts.all() })
+
+// interactions.api.ts - logging one ALSO invalidates the contact detail,
+// because the Overview card's counter reads _count.interactions from it.
+onSuccess: () => {
+  qc.invalidateQueries({ queryKey: qk.contacts.interactions(contactId) });
+  qc.invalidateQueries({ queryKey: qk.contacts.detail(contactId) });
+}
+```
+
+`useShareTranscript` invalidates nothing — sending an email changes no cached server state.
+
+Optimistic updates: none so far, and only ever where the action is instant and obviously
+reversible. **Never optimistic on anything that sends an email or costs money.**
+
+Sign-out calls `queryClient.clear()` (`providers/session-provider.tsx`). Without it, the next
+user on the device sees the previous user's recordings — call transcripts — until each query
+happens to refetch.
 
 ---
 
@@ -232,7 +271,8 @@ Never optimistic on anything that sends an email or costs money.
 v1 is **online-only**, deliberately. But:
 
 - TanStack Query's cache means a screen you visited a minute ago still renders from memory.
-- Add `onlineManager` wiring via `expo-network` so queries pause rather than fail in a tunnel.
+- ✅ `onlineManager` is wired to `expo-network` in `providers/query-provider.tsx`, so queries
+  pause rather than fail in a tunnel. There is still no offline *banner* telling the user why.
 - Never persist the query cache to disk in v1 — recordings contain call transcripts, i.e.
   sensitive client conversation content. Writing them to unencrypted `AsyncStorage` is not
   something to do casually. If we want offline transcripts later, that's a scoped piece of work

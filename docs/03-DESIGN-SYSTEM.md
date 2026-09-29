@@ -181,8 +181,9 @@ module.exports = {
       },
       fontFamily: {
         sans: ["Bricolage_400Regular"],
-        medium: ["Bricolage_500Medium"],
-        semibold: ["Bricolage_600SemiBold"],
+        // The "sans-" prefix is LOAD-BEARING - see section 4.
+        "sans-medium": ["Bricolage_500Medium"],
+        "sans-semibold": ["Bricolage_600SemiBold"],
         display: ["Bricolage_700Bold"],
       },
     },
@@ -219,18 +220,27 @@ export const appFonts = {
 
 > **React Native has no synthetic bold that looks right.** You must load and name each weight —
 > `fontWeight: "600"` on a single loaded family renders a faked bold on Android. Always pick the
-> family (`font-semibold`, `font-display`), never `font-bold` on the regular family.
+> family (`font-sans-semibold`, `font-display`), never `font-bold` on the regular family.
+
+### Why the families are `sans-medium` / `sans-semibold`, not `medium` / `semibold`
+
+**Do not rename them.** Tailwind already ships `font-medium` and `font-semibold` in its
+**fontWeight** scale. Naming a *fontFamily* the same thing makes the family lose: `font-semibold`
+then emits `fontWeight: 600` with **no `fontFamily`**. On Android/Fabric that half-specified style
+makes the native text measurer throw — `IllegalStateException: Required value was null` in
+`TextLayoutManager.getOrCreateSpannableForText` — a **native crash on launch**, not a style
+glitch. Cost a real debugging session on 2026-09-15. The prefix is the fix.
 
 ### Type scale
 
 | Role | Class | Size / line | Weight |
 | ---- | ----- | ----------- | ------ |
 | Screen title | `font-display text-[30px]` | 30 / 36, tracking `-0.5` | 700 |
-| Section title | `font-semibold text-base` | 16 / 22 | 600 |
-| Card title | `font-medium text-[15px]` | 15 / 20 | 500 |
+| Section title | `font-sans-semibold text-base` | 16 / 22 | 600 |
+| Card title | `font-sans-medium text-[15px]` | 15 / 20 | 500 |
 | Body | `font-sans text-sm` | 14 / 20 | 400 |
 | Secondary / meta | `font-sans text-xs text-muted-foreground` | 12 / 16 | 400 |
-| Badge / pill | `font-medium text-xs` | 12 / 16 | 500 |
+| Badge / pill | `font-sans-medium text-xs` | 12 / 16 | 500 |
 | Transcript | `font-sans text-sm leading-relaxed` | 14 / 22 | 400 |
 
 Transcripts are long-form reading: keep them at `leading-relaxed` and full content width, and let
@@ -240,33 +250,51 @@ them be selectable (`selectable` on `<Text>`) so users can copy a quote.
 
 ## 5. Spacing, elevation, shape
 
-- **Gutter:** 16px (`px-4`) via `<Container>`. One gutter, everywhere.
+- **Gutter:** 16px (`px-4`). One gutter, everywhere. (Applied directly; the planned
+  `<Container>` component was never built — `src/components/screen.tsx` is the only shell.)
 - **Vertical rhythm:** 12px between cards in a list (`gap-3`), 24px between sections (`gap-6`) —
   mirrors the web's `space-y-3` / `space-y-6`.
 - **Card:** `bg-card border border-border rounded-lg p-4`. **No drop shadows.** The web app is a
   flat, Linear/Notion-style surface design; borders carry the hierarchy. Shadows on Android
   (`elevation`) and iOS diverge badly and add nothing here.
 - **Touch targets:** minimum 44×44. Icon buttons get `h-10 w-10` with the icon at 20px.
-- **Press feedback:** `active:opacity-70` on `Pressable`, plus `expo-haptics` `selectionAsync()`
-  on destructive or state-changing taps only — not on navigation.
+- **Press feedback:** `active:opacity-70` on `Pressable`. Haptics were specced but
+  **`expo-haptics` is not installed** — treat that line as a future nicety, not current practice.
+- 🚨 **Never give a `Pressable` a FUNCTION style** (`style={({ pressed }) => ({…})}`).
+  NativeWind 4 wraps every RN component to support `className`, and that wrapper does not
+  reliably forward the function form — the style is silently dropped and the button renders
+  **invisible but still tappable**. Track press state with `onPressIn`/`onPressOut` + `useState`
+  and pass a plain style **object**. See `src/components/login/auth-button.tsx`.
 
 ---
 
 ## 6. Component conventions
 
-| Component | Convention |
-| --------- | ---------- |
-| `Button` | CVA variants `default` (orange fill) · `outline` · `ghost` · `destructive`; sizes `sm` · `default` · `icon`. |
-| `Card` | Border + radius, no shadow. `CardHeader` / `CardContent` split like the web. |
-| `Badge` | Variants `default` · `secondary` · `outline`. Source labels and categories use `outline`. |
-| `Avatar` | Image with initials fallback (`initialsFromName` in `lib/format.ts`), `h-8 w-8` in lists. |
-| `Skeleton` | `bg-muted rounded` block with a subtle pulse. Every list and detail screen has one. |
-| `SearchBar` | Leading `Search` icon, trailing clear `X` when non-empty. Debounced 300ms. |
-| `Sheet` | Bottom sheet for filters and pickers. One sheet at a time — **do not nest modals** (known-finicky on RN; bit the CRM app). |
+> **What actually got built.** The plan was a React Native Reusables primitive library in
+> `components/ui/`. **RNR / `@rn-primitives/*` were never installed** — the components below were
+> hand-rolled instead, and most never became shared primitives at all. `components/ui/` holds
+> exactly three files: `search-bar.tsx`, `skeleton.tsx`, `states.tsx`.
+
+| Component | Where it actually lives | Convention |
+| --------- | ----------------------- | ---------- |
+| `SearchBar` | `ui/search-bar.tsx` | Leading `Search` icon, trailing clear `X` when non-empty. Debounced 300ms. |
+| `Skeleton` | `ui/skeleton.tsx` | `bg-muted rounded` block with a subtle pulse. Every list and detail screen has one. |
+| States | `ui/states.tsx` | `EmptyState`, `ErrorState`, `describeError`. Every screen wires all four states. |
+| Avatar | `contacts/contact-avatar.tsx` | Image with initials fallback, sized by prop. |
+| Badge | `contacts/relationship-badge.tsx`, `recordings/source-chips.tsx` | Feature-local, not a shared primitive. |
+| Sheets | `contacts/log-interaction-sheet.tsx`, `recordings/share-transcript-sheet.tsx` | RN `Modal`, `animationType="slide"`, `transparent`. One at a time — **do not nest modals** (known-finicky on RN; bit the CRM app). |
+| Button / Card | — | No shared component. Cards are the `bg-card border border-border rounded-lg p-4` class string above; buttons are `Pressable` + classes at each call site. |
+
+Consolidating these into real primitives is worthwhile but has never been scheduled. If you add
+one, put it in `components/ui/` and update this table.
 
 ### Icons
 
-`lucide-react-native`, same names as the web so a screen is greppable across both repos.
+🚨 **Import from `@/lib/icons`, never from `lucide-react-native` directly.** The package
+barrel isn't tree-shaken by Metro — five icons pulled in all ~1600 and added **~3MB** to the
+Android bundle (measured 2026-09-15: 3.7MB → 6.7MB). `src/lib/icons.ts` re-exports each icon from
+its own `lucide-react-native/icons/<kebab-name>` module. Names match the web so a screen is
+greppable across both repos.
 Recording icons are fixed by the web app (`recordings-page-client.tsx`):
 
 | Source | Icon | Label |
@@ -317,26 +345,58 @@ Owned by `src/providers/theme-provider.tsx`: it drives `Appearance.setColorSchem
 | Asset | Spec |
 | ----- | ---- |
 | Splash background | `#ff8900` (light **and** dark — a brand splash shouldn't change) |
-| Splash mark | White Ninja PRM logo, `imageWidth: 200`, `resizeMode: "contain"` |
-| App icon | Supplied by the user (`src/assets/images/icon.png`, 1024×1024) |
-| Android adaptive icon | White foreground on `#ff8900` background |
-| Favicon (web target) | Same mark |
+| Splash mark | White wordmark, transparent ground, `imageWidth: 180`, `resizeMode: "contain"` |
+| App icon | `src/assets/images/icon.png`, 1024×1024, **opaque**, white wordmark on `#ff8900` |
+| Android adaptive icon | White foreground, transparent ground, on `#ff8900` |
+
+### Don't hand-edit the three assets — generate them
+
+```bash
+node scripts/generate-icons.mjs      # needs the `sharp` devDependency
+```
+
+**The master is `src/assets/images/icon.png`.** Edit that one file and re-run the script; it
+re-derives `splash-icon.png` and `adaptive-icon.png` from it. (It used to read
+`ref/prm/public/logo.png`, but the wordmark was redrawn by hand on 2026-09-29 and the two
+artworks have diverged — re-point it only if they're brought back into sync.)
+
+The script exists because the sizing rules are not guessable and every mistake costs a
+20-minute native build to discover:
+
+| Rule | Value | Why |
+| ---- | ----- | --- |
+| `ICON_PCT` | **0.76** | Matches `ninja_crm_mobile` (measured 75.5%). At 66% the strokes had ~15% fewer pixels once iOS scaled to ~60pt and it read as blurry. iOS icons are corner-rounded, never circle-masked, so this is safe. |
+| `MASKED_PCT` | **0.52** | Android 12+ splash **and** adaptive launcher icons both mask to a circle of ~⅔ the canvas. The mark's **diagonal** — not its width — must fit. The script asserts it (currently 606/683). |
+| iOS icon must be **opaque** | `.flatten()` | A transparent pixel gives a **blank** icon on the home screen. Keep the 4th channel though — every working sibling app ships 4-channel PNGs; stripping alpha was a wrong theory once already. |
+
+The mark is lifted off its orange ground by recovering alpha from the **blue** channel: the
+master is flat white over one flat colour, and blue has the widest spread between them, so the
+recovery is exact and the antialiased edges survive. A threshold leaves an orange fringe that
+shows as dirt once the mark sits on the splash's slightly different orange.
 
 ```jsonc
-// app.json (excerpt)
+// app.json (excerpt) — note ios.icon is REQUIRED on SDK 57; the root `icon`
+// alone gives a blank icon on the home screen.
+"icon": "./src/assets/images/icon.png",
+"ios": { "icon": "./src/assets/images/icon.png" },
 "plugins": [
   "expo-router",
   ["expo-splash-screen", {
     "image": "./src/assets/images/splash-icon.png",
-    "imageWidth": 200,
+    "imageWidth": 180,
     "resizeMode": "contain",
     "backgroundColor": "#ff8900",
-    "dark": { "backgroundColor": "#ff8900" }
+    "dark": { "image": "./src/assets/images/splash-icon.png", "backgroundColor": "#ff8900" }
   }],
-  "expo-secure-store",
-  "expo-web-browser"
+  "expo-web-browser",
+  ["expo-secure-store", { "faceIDPermission": false }],
+  ["expo-audio", { "microphonePermission": false, "recordAudioAndroid": false,
+                   "enableBackgroundRecording": false, "enableBackgroundPlayback": true }],
+  "expo-asset",
+  "expo-sharing"
 ],
 "android": {
+  "predictiveBackGestureEnabled": false,
   "adaptiveIcon": {
     "backgroundColor": "#ff8900",
     "foregroundImage": "./src/assets/images/adaptive-icon.png"
@@ -344,8 +404,8 @@ Owned by `src/providers/theme-provider.tsx`: it drives `Appearance.setColorSchem
 }
 ```
 
-⏳ **Waiting on:** the logo artwork from the user. Until it arrives, ship a placeholder wordmark
-and keep the colours correct so the swap is a one-file change.
+The splash plugin needs **`image` alongside `imageWidth`/`resizeMode`** — omitting it fails the
+Android build with `resource drawable/splashscreen_logo not found`.
 
 ---
 

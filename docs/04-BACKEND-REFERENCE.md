@@ -88,23 +88,30 @@ others become `Plaud recording` / `Granola meeting` / `Fieldy conversation`.
 | `PATCH` | `/api/v1/me` | updated user | `{ name?, timezone?, … }` |
 | `GET` | `/api/v1/call-recordings/:id/audio` | **`{ url, mimeType }`** | Presigned S3 URL, falls back to the stored `url`. ✅ Exactly what mobile needs. |
 | `GET` | `/api/v1/plaud-recordings/:id/audio` | **raw audio bytes** | Proxied live from Plaud. `409` if Plaud isn't connected. ⚠️ Not a URL — see §4. |
-| `GET` | `/api/v1/contacts?search&page&pageSize&sortBy&sortOrder&archived&tagIds` | contact list + tags + counts | For the contact picker, if we add assignment |
-| `GET` | `/api/v1/contacts/:id` | contact detail | |
-| `GET` | `/api/v1/contacts/:id/call-recordings` | that contact's calls | Not used in v1 |
-| `GET` | `/api/v1/contacts/:id/plaud-recordings` | that contact's Plaud recordings | Not used in v1 |
-| `GET` | `/api/v1/contacts/:id/granola-meetings` | that contact's meetings | Not used in v1 |
-| `GET` | `/api/v1/dashboard` | contacts/tasks/interactions stats | ⚠️ Contains **no recording data** — checked. The Home screen needs a new stats endpoint (§3). |
-| `GET` | `/api/v1/tasks`, `/api/v1/interactions`, … | — | Out of v1 scope |
+| `GET` | `/api/v1/contacts?search&page&pageSize&sortBy&sortOrder&archived&relationshipType&tagIds` | `{ contacts, totalCount, page, pageSize, totalPages }` | ✅ The Contacts tab. ⚠️ An **invalid `relationshipType` 500s** — only ever send a real enum value, or omit it. |
+| `GET` | `/api/v1/contacts/:id` | contact detail + `_count` | ✅ Detail screen. Shape differs from the list row — see [FEAT-02](features/FEAT-02-CONTACTS.md) §3. |
+| `POST` | `/api/v1/contacts` | created contact | ✅ `name` is the only required field |
+| `PATCH` | `/api/v1/contacts/:id` | updated contact | Wired in `contacts.api.ts`, **no UI calls it** |
+| `DELETE` | `/api/v1/contacts/:id` | `{ success: true }` | ✅ ⚠️ **Hard delete, no undo.** Always confirm. |
+| `POST` | `/api/v1/contacts/:id/archive` · `/unarchive` | updated contact | ✅ |
+| `GET` | `/api/v1/contacts/:id/interactions?take=` | `{ interactions, totalCount? }` | ✅ |
+| `POST` | `/api/v1/contacts/:id/interactions` | created interaction | ✅ `type` **and** `occurredAt` are both required; enum-validated |
+| `GET` | `/api/v1/contacts/:id/call-recordings?take=` | `{ recordings, hasMore, totalCount }` | ✅ On the contact detail screen |
+| `GET` | `/api/v1/contacts/:id/plaud-recordings` | that contact's Plaud recordings | Exists, unused |
+| `GET` | `/api/v1/contacts/:id/granola-meetings` | that contact's meetings | Exists, unused |
+| — | `/api/v1/contacts/:id/fieldy-conversations` | — | ❌ **Does not exist.** The only one of the four missing, which is why a contact's detail screen shows calls only. |
+| `GET` | `/api/v1/dashboard` | contacts/tasks/interactions stats | ⚠️ Contains **no recording data** — checked. Home uses `/recordings/stats` instead. |
+| `GET` | `/api/v1/tasks`, … | — | Contracts documented; no mobile screens yet |
 
-**There is no REST endpoint that lists recordings.** The web list is a server component calling
-the `getUnifiedRecordings()` server action directly. Server actions cannot be called from a
-native app.
+> **Historical note.** This doc used to say "there is no REST endpoint that lists recordings" —
+> true when it was written, fixed by Phase 0. The recordings routes in §3 below all exist now.
 
 ---
 
-## 3. Endpoints we must add
+## 3. The recordings endpoints (Phase 0 — shipped)
 
-Full specs and implementation notes in
+✅ All of these exist and are consumed by `src/api/recordings.api.ts`. Full specs and
+implementation notes in
 [implementation/BACKEND-CHANGES.md](implementation/BACKEND-CHANGES.md). Contract summary:
 
 ### `GET /api/v1/recordings`
@@ -221,18 +228,26 @@ Powers the Home screen. Nothing like it exists today — `/api/v1/dashboard` and
   numbers agree with what the list actually shows.
 - Eight `count()` calls plus one `aggregate` in a single `Promise.all`. Cheap; no new indexes.
 
-### `GET /api/v1/recording-categories`
+### `POST /api/v1/recordings/:source/:id/share` — shipped later
 
-`[{ id, name, color, counts: { call, plaud, granola, fieldy, total } }]` — for the (optional)
-category filter. Mirrors `getRecordingCategoriesWithStats()`.
+Emails a transcript. Body `{ recipients: string[], note?: string }`. Caps: **10 recipients**,
+**4000-character note**, **10 sends/hour**. Consumed by `src/api/share.api.ts`.
 
-### Nice-to-have, only if we add write actions in v1
+### `GET /api/v1/recording-categories` — ❌ never built
+
+Specced as `[{ id, name, color, counts: {…} }]` for a category filter. No route, no hook, no
+query key. Either build it or drop the idea; right now it's a ghost in three documents.
+
+### Recording write endpoints — ❌ still missing, and now blocking
 
 | `POST` | `/api/v1/recordings/:source/:id/archive` and `/unarchive` |
 | `PUT`  | `/api/v1/recordings/:source/:id/contacts` — body `{ contactIds: string[] }` |
 | `PUT`  | `/api/v1/recordings/:source/:id/category` — body `{ categoryId: string \| null }` |
 
-v1 as scoped is **read-only**. Decide before Phase 6 whether archive/assign ship in v1.
+The "v1 is read-only" premise that deferred these **no longer holds** — the app writes contacts,
+interactions and share emails. The `PUT …/contacts` row is the one that hurts: the phone can
+list recordings and list contacts but cannot connect them. Paste-ready prompt:
+[prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md](prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md).
 
 ---
 
@@ -273,8 +288,13 @@ body when present. The app's rules:
 | `403` | Not allowed | Show the message. **Never** sign out |
 | `404` | Missing or not yours | "Recording not found" empty state, back to the list |
 | `409` | Integration not connected (e.g. Plaud) | Inline notice: "Plaud isn't connected — connect it on the web app" |
-| `429` | Rate-limited (magic-link send is capped at 3/60s) | "Too many requests, wait a moment" |
+| `429` | Rate-limited — magic-link send is 3/60s, transcript share is 10/hour | "Too many requests, wait a moment" |
+| `502` | Mail provider failed (transcript share) | Surface it; the send did not happen |
 | `5xx` | Server | Generic error + Retry button |
+
+Two `400`s carry a message meant for the user rather than the developer — the share endpoint's
+validation failures, and a `404` from share meaning *this recording has no transcript to send*.
+Show `ApiError.message` directly for those rather than a generic string.
 
 ---
 

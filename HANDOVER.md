@@ -4,46 +4,107 @@ A React Native + Expo app for **Ninja PRM**. It reuses the existing Next.js PRM 
 (`ref/prm`) — same database, same Better Auth session, same API. This doc is the single entry
 point: **what exists, how to run it, what to watch out for, and what to do next.**
 
-> ## Status — 2026-09-15
+> ## Status — 2026-09-29
 >
-> **Phase 1 done: the app is scaffolded and the design system works.**
+> **The app is built and on TestFlight.** Magic-link sign-in, Home dashboard, the unified
+> recordings list, per-source detail with audio playback, save / copy / email-share of
+> transcripts, and a Contacts tab (list, create, detail, interaction logging).
 >
 > Expo SDK 57 + **NativeWind 4.2.7 (v4 stable)** + Tailwind 3.4.17, brand tokens (`#ff8900`),
-> Bricolage Grotesque in 4 weights, and a persisted light/dark theme provider.
-> `npx tsc --noEmit` clean, `npx expo-doctor` **20/20**.
+> Bricolage Grotesque in 4 weights, persisted light/dark theme. Four tabs: Home · Recordings ·
+> Contacts · Settings.
 >
-> ⚠️ **Bundle-verified, not device-verified.** No emulator/device was available — everything was
-> proven via `npx expo export` and inspecting the bundle. **First job next session: run it on a
-> real device** (`npm start`, scan with a dev build).
+> **Just changed (not yet in a build):** the app icon's wordmark was redrawn by hand, and
+> `splash-icon.png` + `adaptive-icon.png` were regenerated from it. Icons are native —
+> **this needs an `eas build` to see.**
 >
-> `src/app/index.tsx` is currently a **temporary design-system check screen**. Delete it in Phase 5.
+> ### What to do next
 >
-> **Next step:** **Phase 0 (backend)** — now unblocked, the user has confirmed `ref/prm` is
-> editable. It's the critical path: Phases 5–7 have no data without it. Phase 2 (UI primitives)
-> can run alongside.
+> 1. **Android preview build.** The post-splash crash fix (scoping the `@expo/ui` autolinking
+>    exclusion to iOS only) is **still unverified**: `eas build --platform android --profile preview`.
+>    The icon change rides along.
+> 2. **Assigning a recording to a contact is impossible with today's API.** Confirmed against all
+>    54 non-GET handlers in PRM: every recordings route is GET-only except `share`. Needs
+>    `PUT /api/v1/recordings/:source/:id/contacts` on the backend — the prompt for it isn't
+>    written yet. See `docs/implementation/BACKEND-CHANGES.md` §7.
+> 3. **Tasks UI.** Backend contracts are documented; no screens exist.
 >
-> ⚠️ Still true: the PRM web app has **no REST API for recordings** — the web list calls a server
-> action directly, and native can't do that. See §5.
+> ### Known, unfixed (backend)
+>
+> - `PATCH /api/v1/tasks/[id]` deletes contact links *before* validating `dueAt`, with no
+>   transaction — a bad date loses the links. **Data loss.**
+> - `/me` signs the user out during a DB outage (it can't tell "no session" from "no database").
+> - Several endpoints 500 rather than 400 on invalid enum input.
+
+---
+
+## 0. Start the next session with this
+
+Paste this in verbatim:
+
+```
+Read CLAUDE.md and HANDOVER.md. We are picking up Ninja PRM Mobile after the
+2026-09-29 session, which was docs + app icons only - no app source changed.
+
+State: the app is on TestFlight. Four tabs (Home / Recordings / Contacts /
+Settings), magic-link sign-in, audio playback, save/copy/email a transcript,
+and full Contacts. docs/ was audited against the code that session, so it is
+trustworthy again - read it rather than re-deriving from source.
+
+Three live threads, in priority order:
+
+1. ANDROID PREVIEW BUILD - unverified fix.
+   `eas build --platform android --profile preview`
+   A previous preview crashed right after the splash. Cause: the @expo/ui
+   autolinking exclusion (added for an iOS-only Swift compile error) was
+   global, so Android lost a module it needed. It is now scoped to ios in
+   package.json. Nobody has confirmed the fix. The redrawn app icon rides
+   along in the same build - check both.
+
+2. ASSIGN A RECORDING TO A CONTACT - blocked on the backend.
+   No endpoint exists; verified across all 54 non-GET v1 handlers. The prompt
+   is written: docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md - run it in
+   the ninja_prm repo, not here. The mobile-side work is listed at the bottom
+   of that file. Ask me before starting the backend side.
+
+3. TASKS UI - backend contracts are documented, no screens exist.
+   docs/prompts/BACKEND-CONTACTS-TASKS.md has the shapes. Note the known bug:
+   PATCH /api/v1/tasks/[id] deletes contact links before validating dueAt with
+   no transaction, so a bad date loses them. Fix that before building UI on it.
+
+Before writing any code, read CLAUDE.md's gotcha list - especially 4b
+(never give a Pressable a function style) and 4c (import icons from
+@/lib/icons). Both cost real debugging time.
+
+Tell me which thread you'd start with and what the first concrete step is.
+Don't write code yet.
+```
 
 ---
 
 ## 1. What we're building
 
-**v1 is the Recordings feature, and nothing else.** Two bottom tabs:
+v1 started as **Recordings and nothing else**; Contacts was added on 2026-09-28 at the user's
+request. Four bottom tabs:
 
 | Tab | Screen | What's on it |
 | --- | ------ | ------------ |
 | **Home** | `(app)/index` | Recording stats (this week + trend, needs-contact, per-source breakdown, total + hours captured), the 5 most recent recordings, **View all** |
 | **Recordings** | `(app)/recordings/index` | The unified list: search, source filter, sort, infinite scroll |
-| — | `(app)/recordings/[source]/[id]` | Recording detail — summary, action items, contacts, transcript, source-specific extras, audio player |
-| — | `(app)/settings` | Account, theme, sign out. Reached by the gear in Home's header; **not** a tab |
+| — | `(app)/recordings/[source]/[id]` | Recording detail — summary, action items, contacts, transcript, source-specific extras, audio player, save / copy / email-share |
+| **Contacts** | `(app)/contacts/index` | List with search + relationship filter, and **New** |
+| — | `(app)/contacts/[id]` | Overview counters, interactions, call recordings, log-an-interaction |
+| **Settings** | `(app)/settings` | Account, theme, sign out |
+
+Tasks is specced on the backend but **has no screens**.
 
 Plus magic-link sign-in that opens **straight into the app** from the email.
 
 Recordings come from four sources — `call`, `plaud`, `granola`, `fieldy` — merged into one feed.
 Calls and Plaud have audio; Granola and Fieldy are text only.
 
-Full spec: **[docs/features/FEAT-01-RECORDINGS.md](docs/features/FEAT-01-RECORDINGS.md)**.
+Full specs: **[docs/features/FEAT-01-RECORDINGS.md](docs/features/FEAT-01-RECORDINGS.md)** and
+**[docs/features/FEAT-02-CONTACTS.md](docs/features/FEAT-02-CONTACTS.md)**.
 
 ---
 

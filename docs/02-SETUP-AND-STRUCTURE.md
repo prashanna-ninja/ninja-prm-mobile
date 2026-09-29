@@ -29,7 +29,7 @@ template's own `CLAUDE.md`/`AGENTS.md`/demo screens.
 
 | Package | Version | Note |
 | ------- | ------- | ---- |
-| Expo SDK | **57.0.22** | `create-expo-app` default as of 2026-09-15 |
+| Expo SDK | **57.0.25** | Scaffolded at 57.0.22; aligned to patch releases via `expo install --fix` |
 | React Native | **0.86.3** | |
 | React | **19.2.3** | |
 | **NativeWind** | **4.2.7** | v4 **stable** (v5 is RC-only) |
@@ -53,11 +53,19 @@ template's own `CLAUDE.md`/`AGENTS.md`/demo screens.
   both are always on. `expo-doctor` rejects them. (Edge-to-edge being permanent means gotcha §7.6
   about `KeyboardAvoidingView` definitely applies to us.)
 
-### Still to install (later phases)
+### What ended up installed
 
-React Native Reusables primitives · React Hook Form + Zod · TanStack Query ·
-`lucide-react-native` + `react-native-svg` · `better-auth` + `@better-auth/expo` ·
-`expo-audio` · `expo-clipboard`.
+All of the originally planned set **except React Native Reusables** — RNR / `@rn-primitives/*`
+were never added, and the UI is hand-rolled. Beyond the plan: `expo-file-system`,
+`expo-sharing`, `expo-asset`, `expo-image`, `expo-linear-gradient`, `expo-network` (drives
+`onlineManager`), `@react-native-community/slider` (the audio scrubber), `date-fns`, and
+**`sharp`** as a devDependency for `scripts/generate-icons.mjs`.
+
+**`expo-haptics` is NOT installed**, despite `docs/03` specifying haptics on destructive taps.
+
+> **`.npmrc` sets `legacy-peer-deps=true`.** `@better-auth/expo` declares a stale
+> `expo-network@^8.0.7` peer range, and without the flag every install fails. Check that peer
+> range before removing it.
 
 > After touching `babel.config.js` / `metro.config.js` or installing native deps, restart Metro
 > with a clean cache: **`npx expo start -c`**.
@@ -77,34 +85,38 @@ src/
 │   │   ├── _layout.tsx
 │   │   └── sign-in.tsx         #     magic-link screen
 │   └── (app)/                  #   Logged-IN stack
-│       ├── _layout.tsx         #     bottom tabs: Home · Recordings (settings = href:null)
-│       ├── index.tsx           #     TAB 1 — Home (stats + recent)
-│       ├── settings.tsx        #     account + theme + sign out (pushed, not a tab)
-│       └── recordings/         #     TAB 2 — a nested stack
+│       ├── _layout.tsx         #     bottom tabs: Home / Recordings / Contacts / Settings
+│       ├── index.tsx           #     TAB 1 - Home (stats + recent; recent list inlined here)
+│       ├── settings.tsx        #     TAB 4 - account + theme + version + sign out
+│       ├── recordings/         #     TAB 2 - a nested stack
+│       │   ├── _layout.tsx
+│       │   ├── index.tsx       #       the full list
+│       │   └── [source]/
+│       │       └── [id].tsx    #       Recording detail (one route, four sources)
+│       └── contacts/           #     TAB 3 - a nested stack
 │           ├── _layout.tsx
-│           ├── index.tsx       #       the full list
-│           └── [source]/
-│               └── [id].tsx    #       Recording detail (one route, four sources)
+│           ├── index.tsx       #       list: search + relationship filter
+│           ├── new.tsx         #       create form
+│           └── [id].tsx        #       Contact detail
 │
 ├── components/                 # ALL components. Grouped by screen/area. NEVER inside app/.
-│   ├── ui/                     #   Design-system primitives: button, card, badge, input, text,
-│   │                           #   avatar, skeleton, select, search-bar, sheet, chip
+│   ├── ui/                     #   search-bar, skeleton, states  <- only three; see note below
 │   ├── screen.tsx              #   Safe-area page shell
-│   ├── container.tsx           #   Shared gutters (.content-wrapper)
-│   ├── app-header.tsx          #   Shared screen header (title, subtitle, right slot)
-│   ├── login/                  #   login-form.tsx
-│   ├── dashboard/              #   stat-card, stat-row, library-breakdown-card,
-│   │                           #   recent-recordings, dashboard-skeletons
-│   └── recordings/             #   recording-row (shared with Home via a `compact` prop),
-│                               #   source-badge, source-icon, category-badge,
-│                               #   recordings-filter-sheet, audio-player, transcript-section,
-│                               #   action-items-section, contact-chips, recording-skeletons
+│   ├── app-header.tsx          #   Shared screen header (title, subtitle, left/right slots)
+│   ├── login/                  #   login-form, auth-hero, auth-button
+│   ├── dashboard/              #   stat-card, library-card
+│   ├── recordings/             #   recording-row, source-chips, audio-player,
+│   │                           #   recording-details, recording-actions, share-transcript-sheet
+│   └── contacts/               #   contact-row, contact-avatar, contact-form, contact-overview,
+│                               #   relationship-badge, relationship-filter, chip-input,
+│                               #   log-interaction-sheet
 │
-├── schemas/                    # Zod schemas — one file per domain
+├── schemas/                    # Zod schemas - one file per domain
 │   └── auth.schema.ts
-├── types/                      # TS types — one file per domain; infer from schema where possible
+├── types/                      # TS types - one file per domain; infer from schema where possible
 │   ├── auth.types.ts
-│   └── recording.types.ts
+│   ├── recording.types.ts
+│   └── contact.types.ts
 │
 ├── lib/                        # Utilities & infrastructure
 │   ├── utils.ts                #   cn()
@@ -113,23 +125,35 @@ src/
 │   ├── session-cookie.ts       #   the one place we write the session cookie
 │   ├── query-client.ts         #   TanStack Query config
 │   ├── query-keys.ts           #   the query-key factory (see 06)
+│   ├── icons.ts                #   THE icon barrel - import lucide from here, never direct (S7)
 │   ├── fonts.ts                #   useFonts map
 │   ├── format.ts               #   date/duration/initials formatting
+│   ├── file-share.ts           #   save / share a transcript or audio file
 │   └── recordings.ts           #   source meta (label, icon), title fallbacks, helpers
 ├── api/                        # Per-domain data access + TanStack Query hooks
-│   ├── auth.api.ts
-│   └── recordings.api.ts       #   useRecordings, useRecording, useRecordingAudio, …
+│   ├── recordings.api.ts       #   useInfiniteRecordings, useRecording, useRecordingAudio, ...
+│   ├── contacts.api.ts         #   useInfiniteContacts, useContact, create/update/archive/delete
+│   ├── interactions.api.ts     #   useContactInteractions, useLogInteraction, useContactRecordings
+│   └── share.api.ts            #   useShareTranscript
 ├── hooks/                      # Shared hooks
 │   ├── use-auth-deep-link.ts
 │   ├── use-debounced-value.ts
 │   └── use-color-scheme.ts
-├── providers/                  # query-provider.tsx, theme-provider.tsx
-├── constants/                  # env.ts → API_BASE_URL
-└── assets/images/              # icon, adaptive-icon, splash, logo
+├── providers/                  # query-provider, theme-provider, session-provider
+├── constants/                  # env.ts -> API_BASE_URL
+├── global.css                  # the design tokens (see 03)
+└── assets/images/              # icon, adaptive-icon, splash-icon, favicon, logo
 
-(root config: global.css, tailwind.config.js, babel.config.js, metro.config.js,
- app.json, eas.json, components.json, tsconfig.json, .env, .env.example)
+(root: scripts/generate-icons.mjs, tailwind.config.js, babel.config.js, metro.config.js,
+ app.json, eas.json, components.json, tsconfig.json, .npmrc, .env, .env.example)
 ```
+
+> ⚠️ **`components/ui/` has three files, not twelve.** The plan was a React Native Reusables
+> primitive set; **RNR / `@rn-primitives/*` were never installed**, and the UI is hand-rolled.
+> `ui/` holds `search-bar.tsx`, `skeleton.tsx`, `states.tsx`. Avatars, badges and sheets live
+> with their feature instead. There is **no `container.tsx`** — `screen.tsx` is the only shell,
+> and the 16px gutter is applied as `px-4` at each screen. See `docs/03` §6.
+
 
 ### The rules (where does my file go?)
 
@@ -220,13 +244,19 @@ Measured with `npx expo export --platform android` (2026-09-15):
 - **🚨 Import lucide icons from `@/lib/icons`, never from `lucide-react-native`.** The package
   barrel is not tree-shaken by Metro: importing from it bundles **all ~1600 icons** and added
   **~3MB** to the Android bundle for five icons (6.7MB → 4.8MB once fixed). `src/lib/icons.ts`
-  re-exports each icon from its own module (`lucide-react-native/dist/esm/icons/<kebab-name>`),
-  so the codebase still writes clean imports. `tsconfig.json` maps those deep paths to their
-  `.d.ts` files under `dist/types/icons/`.
-- **Resize images before they enter `src/assets/`.** The PRM logo is 16612×10624 — about **700MB
-  decoded**, which crashes the app. It's stored here at 600×384 / 22KB. Use `sharp`
-  (a devDependency) to downscale anything large; the throwaway script pattern is in the
-  2026-09-15 log entry.
+  re-exports each icon from its own module. Use the **`lucide-react-native/icons/<kebab-name>`**
+  subpath — it's declared in the package's `exports` map. Reaching into `dist/esm/…` directly
+  also works but is *not* in `exports`, so Metro logs a "falling back to file-based resolution"
+  warning for every icon.
+- **Icon names drift between lucide versions.** This version has `building` and `trash`, not
+  `building-2` / `trash-2`. A wrong name is a red-screen crash at runtime, not a build error, so
+  check the file exists under `node_modules/lucide-react-native/icons/` before committing.
+- **Resize images before they enter `src/assets/`.** The PRM web logo is 16612×10624 — about
+  **700MB decoded**, which crashes the app. The in-app logo is stored at 600×384 / 22KB.
+- **The three launcher assets are generated, not hand-made.** `node scripts/generate-icons.mjs`
+  derives `splash-icon.png` and `adaptive-icon.png` from the master `src/assets/images/icon.png`
+  and asserts the rules that keep biting (Android's circular mask, iOS needing an opaque icon).
+  Needs the `sharp` devDependency. Full rationale in `docs/03` §9.
 - **A 944KB `MaterialSymbols` font ships whether we like it or not.** It comes from
   `expo-symbols`, which is a transitive dependency of **`expo-router` itself** in SDK 57. Not
   removable without patching expo-router; not worth it. Just know it's there before hunting for
@@ -243,13 +273,16 @@ Measured with `npx expo export --platform android` (2026-09-15):
 Tracked properly in [implementation/IMPLEMENTATION-PLAN.md](implementation/IMPLEMENTATION-PLAN.md).
 Short version:
 
-0. ⬜ **Backend**: add the REST surface + Expo auth plugin to `ref/prm` ([BACKEND-CHANGES](implementation/BACKEND-CHANGES.md))
+0. ✅ **Backend**: REST surface + Expo auth plugin in `ref/prm` ([BACKEND-CHANGES](implementation/BACKEND-CHANGES.md))
 1. ✅ Scaffold Expo (`src/` model) + NativeWind + tokens + fonts
-2. ⬜ UI primitives + `Screen` / `Container` / `AppHeader`
-3. ⬜ Auth: sign-in screen, deep-link capture, session guard
-4. ⬜ Data layer: `apiFetch`, query client, query keys
-5. ⬜ Tabs shell + Home (stats + recent recordings)
-6. ⬜ Recordings list
-7. ⬜ Recording detail
-8. ⬜ Audio player
-9. ⬜ Settings + theme, splash/icon, polish, dev build
+2. ⚠️ UI primitives — `Screen` + `AppHeader` shipped; **RNR was never installed** and there is
+   no `Container`. Only three files in `components/ui/`.
+3. ✅ Auth: sign-in screen, deep-link capture, session guard
+4. ✅ Data layer: `apiFetch`, query client, query keys
+5. ✅ Tabs shell + Home (stats + recent recordings)
+6. ✅ Recordings list
+7. ✅ Recording detail
+8. ✅ Audio player
+9. ✅ Settings + theme, splash/icon, dev build
+10. ✅ **Contacts** — added 2026-09-28, outside the original plan ([FEAT-02](features/FEAT-02-CONTACTS.md))
+11. ⬜ **Tasks** — backend contracts documented, no screens

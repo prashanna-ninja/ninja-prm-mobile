@@ -202,15 +202,33 @@ Only needed if we ship the category filter; cheap enough to do alongside §2.
 
 ---
 
-## 7. Optional: write endpoints
+## 7. Write endpoints
 
-Only if v1 stops being read-only. Decide **before Phase 6**.
+> **Status 2026-09-29: still none of these exist, and that is now a live blocker.**
+>
+> Verified by listing every non-GET handler under `src/app/api/v1` — all 54. Every `recordings`
+> route is GET-only except `share` (POST), and `PATCH /contacts/[id]` has no recording field.
+> So **the phone cannot assign a recording to a contact**, even though it now has both a
+> Recordings list and a Contacts tab. The web does it through a server action, which native
+> can't call.
+>
+> The `PUT .../contacts` row below is the one that matters. Paste-ready prompt:
+> [../prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md](../prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md).
+
+The original "v1 is read-only" decision is what deferred these. That held while v1 was
+Recordings-only; it stopped holding when Contacts shipped on 2026-09-28.
 
 | Method | Path | Wraps |
 | ------ | ---- | ----- |
 | `POST` | `/api/v1/recordings/:source/:id/archive` · `/unarchive` | `archiveCallRecording` and the per-source equivalents |
 | `PUT` | `/api/v1/recordings/:source/:id/contacts` | `assignCallRecordingContact` / `setPlaudRecordingContacts` / `setGranolaMeetingContacts` / `setFieldyConversationContacts` |
 | `PUT` | `/api/v1/recordings/:source/:id/category` | `setRecordingCategory` |
+
+⚠️ **The four actions do not share a shape**, which is the real work in wrapping them:
+`assignCallRecordingContact` takes ONE `contactId: string | null` and **throws** on failure (and
+also resolves `categoryId`); the other three take `contactIds: string[]` and **return**
+`{ success, error? }`. Pick one request body for all four and adapt inside the route, so the
+client doesn't have to branch per source.
 
 Note those actions call `revalidatePath(...)` for the web. That's harmless from an API route, but
 it means a mobile write correctly busts the web cache too. Good — keep it.

@@ -18,7 +18,8 @@ Then read these in order; each builds on the last.
 
 One doc per feature. A feature doc is the spec: scope, screens, data, states, done-criteria.
 
-- [features/FEAT-01-RECORDINGS.md](features/FEAT-01-RECORDINGS.md) — **Recordings** (the whole of v1)
+- [features/FEAT-01-RECORDINGS.md](features/FEAT-01-RECORDINGS.md) — **Recordings** (the original v1 scope)
+- [features/FEAT-02-CONTACTS.md](features/FEAT-02-CONTACTS.md) — **Contacts** (added 2026-09-28, outside the original scope)
 
 ## Implementation
 
@@ -32,6 +33,7 @@ Paste-ready prompts for work that happens in *another* repo or session.
 - [prompts/BACKEND-PHASE-0.md](prompts/BACKEND-PHASE-0.md) — **run in the `ninja_prm` backend repo**: native magic-link auth + the recordings REST API
 - [prompts/BACKEND-SHARE-TRANSCRIPT.md](prompts/BACKEND-SHARE-TRANSCRIPT.md) — **run in the `ninja_prm` backend repo**: `POST /api/v1/recordings/:source/:id/share`, so the app can email a transcript
 - [prompts/BACKEND-CONTACTS-TASKS.md](prompts/BACKEND-CONTACTS-TASKS.md) — **run in the `ninja_prm` backend repo**: fix the 500-instead-of-401 auth bug and pin down the Contacts/Tasks response shapes
+- [prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md](prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md) — **run in the `ninja_prm` backend repo**: `PUT /api/v1/recordings/:source/:id/contacts`, the missing endpoint that blocks assigning a recording to a contact
 
 ## Living docs
 

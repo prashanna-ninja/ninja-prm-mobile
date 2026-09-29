@@ -6,18 +6,26 @@ A phone app for **Ninja PRM**. It talks to the **same backend** as the existing 
 (`ref/prm`), so data, login and permissions are shared. We are **not** rebuilding the PRM — we're
 taking the one thing that is genuinely better on a phone and building it properly.
 
-**v1 scope:**
+**What shipped** (v1 scope, as it actually ended up):
 
 1. **Auth** — magic-link sign-in, tapped in the email, opening straight into the app.
 2. **Home** — a recordings dashboard: how many, how they're trending, what needs attention, and
    the most recent few with a "View all".
 3. **Recordings** — the unified list (`/dashboard/recordings` on web), the detail view for each
-   of the four sources, and audio playback where audio exists.
+   of the four sources, audio playback where audio exists, and save / copy / **email** a
+   transcript.
+4. **Contacts** — list with search and relationship filter, create, detail, and logging an
+   interaction. ([FEAT-02](features/FEAT-02-CONTACTS.md))
 
-Two bottom tabs: **Home** and **Recordings**. Settings is a gear in the Home header, not a tab.
+Four bottom tabs: **Home · Recordings · Contacts · Settings**.
 
-That's it. Not in v1: contacts, tasks, calendar, opportunities, organizations, interactions,
-integrations, tags, settings beyond sign-out. Those are listed in
+> **The scope widened twice, both times on request.** It began as Recordings-only with two tabs
+> and Settings as a gear in the Home header. Settings became a tab on 2026-09-23; Contacts was
+> added on 2026-09-28. Neither was drift — but treat the original scoping argument below as
+> history, not policy.
+
+Still not built: tasks (backend contracts exist, no screens), calendar, opportunities,
+organizations, integrations, tags. Those are listed in
 [features/FEAT-01-RECORDINGS.md](features/FEAT-01-RECORDINGS.md) §10 as candidates for later.
 
 **Why recordings first:** it is the only part of the PRM that is genuinely *consumed* rather than
@@ -106,13 +114,21 @@ phone app can't call a server action, so we don't copy code. We copy the **contr
 ### ⚠️ The one big difference from Ninja CRM Mobile
 
 Ninja CRM Mobile had it easy: its backend already exposed everything as `/api/*` routes, because
-the web app's own client components called them. **The PRM does not.** Recordings are read
-exclusively through server actions; the only recordings-related REST routes that exist today are
-two audio endpoints and a few per-contact lists.
+the web app's own client components called them. **The PRM did not.** Recordings were read
+exclusively through server actions, which a native client cannot call.
 
-**So the PRM web repo has to grow a small REST surface before this app can do anything.** That
-work is specified in [implementation/BACKEND-CHANGES.md](implementation/BACKEND-CHANGES.md) and is
-**Phase 0** of the build. It is additive — no existing web behaviour changes.
+So the PRM web repo had to grow a REST surface first. **That work is done** — Phase 0 shipped
+`GET /api/v1/recordings`, `/recordings/stats`, `/recordings/[source]/[id]`, its `/audio`, and
+later `POST /recordings/[source]/[id]/share`. Contacts and interactions already had v1 routes.
+Specified in [implementation/BACKEND-CHANGES.md](implementation/BACKEND-CHANGES.md); all additive,
+no existing web behaviour changed.
+
+**The shape of the problem hasn't gone away, though.** Anything the web does through a server
+action is still invisible to this app. The live example: **assigning a recording to a contact**
+has no endpoint, so the phone can read both halves and not connect them. See
+[prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md](prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md).
+Whenever a feature "already works on the web", check whether it works through a *route* before
+assuming the app can have it.
 
 ---
 

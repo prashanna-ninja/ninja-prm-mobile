@@ -8,7 +8,43 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done · ⏸ blocked
 
 ---
 
-## Phase 0 — Backend groundwork ⬜ *(blocked on: can we edit `ref/prm`?)*
+## Where this plan actually stands (2026-09-29)
+
+> **Phases 0–10 are essentially all shipped.** The per-line checkboxes below were never kept up
+> and are the least reliable thing in `docs/` — trust the phase headers and this block. The app
+> is on TestFlight.
+
+**Done and not reflected in the boxes:** the whole recordings REST surface (Phase 0), auth,
+data layer, shell, Home, list, detail, audio, settings, icons/splash, EAS + TestFlight.
+
+**Genuinely not done, and worth knowing before you plan anything:**
+
+| Item | Phase | Status |
+| ---- | ----- | ------ |
+| React Native Reusables / `@rn-primitives/*` | 2 | ❌ **Never installed.** The UI is hand-rolled; `components/ui/` has three files. Not a gap to close — a decision to record. |
+| `Container` component | 2 | ❌ Never built. `screen.tsx` + `px-4` at each screen. |
+| UI primitive gallery screen | 2 | ❌ Never happened. |
+| Sort sheet on the list | 6 | ❌ Sorting is newest/oldest only, no sheet. |
+| Seed detail from the list cache | 7 | ❌ `useRecording` has no `placeholderData`; list → detail still shows a skeleton. |
+| `GET /api/v1/recording-categories` | 0 | ❌ Never built, never consumed. Build it or drop it. |
+| `expo-haptics` | 9 | ❌ Not installed, though `docs/03` specs haptics. |
+| Offline banner | 9 | ❌ `onlineManager` is wired; nothing tells the user why things paused. |
+| `api/auth.api.ts` → `useMe` | 4 | ❌ Replaced by `providers/session-provider.tsx`. Don't build it — see `docs/06` §2. |
+| Android preview crash fix | 10 | ⚠️ Fix applied (`@expo/ui` exclusion scoped to iOS), **unverified** — needs a build. |
+
+**Built but with no phase in this plan at all** — three commits' worth of work that arrived
+after the plan was written:
+
+- **Contacts** (`4ee67a7`, `b5f972c`) — see [../features/FEAT-02-CONTACTS.md](../features/FEAT-02-CONTACTS.md)
+- **Save / copy / email a transcript** (`5f221e9`)
+- **Per-source recording detail extras**
+
+**Blocked on the backend:** assigning a recording to a contact has no endpoint. See
+[../prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md](../prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md).
+
+---
+
+## Phase 0 — Backend groundwork ✅ *(recordings REST surface shipped; `recording-categories` never built)*
 
 Everything in [BACKEND-CHANGES.md](BACKEND-CHANGES.md). Nothing in the app can be tested against
 real data until this lands.
@@ -48,7 +84,7 @@ primary, all four Bricolage weights, the surface tokens and a working light/dark
 
 ---
 
-## Phase 2 — UI primitives ⬜
+## Phase 2 — UI primitives ⚠️ *(shipped WITHOUT React Native Reusables — see the status block)*
 
 - [ ] RNR: `button`, `card`, `input`, `text`, `badge`, `avatar`
 - [ ] Ours: `skeleton`, `search-bar`, `sheet` (bottom sheet), `chip`
@@ -60,7 +96,7 @@ primary, all four Bricolage weights, the surface tokens and a working light/dark
 
 ---
 
-## Phase 3 — Auth ⬜ *(needs Phase 0 §1 to sign in for real)*
+## Phase 3 — Auth ✅ *(2026-09-23)*
 
 - [ ] `lib/auth-client.ts`, `lib/session-cookie.ts`, `hooks/use-auth-deep-link.ts`
 - [ ] `(auth)/sign-in.tsx` + `components/login/login-form.tsx` (RHF + Zod, 60s resend cooldown,
@@ -74,7 +110,7 @@ sign-in.
 
 ---
 
-## Phase 4 — Data layer ⬜
+## Phase 4 — Data layer ✅ *(except `useMe`, which was deliberately replaced)*
 
 - [ ] `lib/api-client.ts` (`apiFetch` + `ApiError`; `Cookie` header, `credentials: "omit"`)
 - [ ] `lib/query-client.ts`, `providers/query-provider.tsx`
@@ -89,7 +125,7 @@ sign-in.
 
 ---
 
-## Phase 5 — Shell + Home ⬜
+## Phase 5 — Shell + Home ✅ *(four tabs, not two — Settings and Contacts are real tabs)*
 
 Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §3–4.
 
@@ -110,7 +146,7 @@ Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §3–4.
 
 ---
 
-## Phase 6 — Recordings list ⬜
+## Phase 6 — Recordings list ✅ *(no sort sheet)*
 
 Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §5.
 
@@ -128,7 +164,7 @@ Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §5.
 
 ---
 
-## Phase 7 — Recording detail ⬜
+## Phase 7 — Recording detail ✅ *(no cache seeding; gained save / copy / email share)*
 
 Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §6.
 
@@ -146,7 +182,7 @@ Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §6.
 
 ---
 
-## Phase 8 — Audio ⬜
+## Phase 8 — Audio ✅ *(background playback enabled)*
 
 Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §7.
 
@@ -161,7 +197,7 @@ Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §7.
 
 ---
 
-## Phase 9 — Settings & polish ⬜
+## Phase 9 — Settings & polish ✅ *(no haptics, no offline banner)*
 
 - [ ] `(app)/settings.tsx` — account card, theme toggle, sign out, version
 - [ ] Real icon + splash from the supplied logo
@@ -175,7 +211,7 @@ Spec: [FEAT-01](../features/FEAT-01-RECORDINGS.md) §7.
 
 ---
 
-## Phase 10 — Release prep ⬜
+## Phase 10 — Release prep 🔄 *(iOS on TestFlight; Android preview unverified)*
 
 - [ ] `eas.json`: `development` · `preview` (internal APK, baked `EXPO_PUBLIC_API_BASE_URL`) ·
       `production`

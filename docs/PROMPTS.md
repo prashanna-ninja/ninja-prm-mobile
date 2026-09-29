@@ -31,6 +31,10 @@ Tell me which phase we're on and what the next concrete step is.
 Don't write code yet.
 ```
 
+The handover prompt for the session immediately after 2026-09-29 is kept in
+[../HANDOVER.md](../HANDOVER.md) §0 — it names the three live threads and the one thing that
+is blocked on the backend, so a fresh session doesn't have to rediscover them.
+
 ## Ending a session
 
 ```

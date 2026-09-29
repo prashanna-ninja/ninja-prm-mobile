@@ -8,6 +8,125 @@ cheap; write it while the reasoning is still fresh.
 
 ---
 
+## 2026-09-29 — Session 6: the icon master moved into this repo
+
+The wordmark was redrawn by hand (bigger PRM, different face) and dropped in as
+`src/assets/images/icon.png`. Only that one file changed, so the other two
+assets were a generation behind.
+
+### Changed
+
+- **`scripts/generate-icons.mjs` now reads `src/assets/images/icon.png`**, not
+  `ref/prm/public/logo.png`. The icon is both an input and an output: the mark
+  is lifted off its ground and re-laid onto a 1024² canvas. Re-point it at the
+  web logo only if the two artworks are brought back into sync.
+- **`splash-icon.png` and `adaptive-icon.png` regenerated** from the new mark.
+
+### Decisions
+
+| Decision | Why |
+| -------- | --- |
+| **Recover alpha from the blue channel** rather than chroma-key or threshold | The master is flat white over one flat orange, so every pixel is `a` parts white — and blue has the widest spread between the two (22 → 255), which recovers `a` exactly. Verified first: **0 of 1,166,400 pixels** fall outside that model. A threshold would have left an orange fringe, visible as dirt once the mark is composited onto the splash's orange. |
+| **Normalised the icon's ground to `#ff8900`** | The hand-drawn master came in at `#FF9416`. Left alone, an iPhone would show a `#FF9416` home-screen icon that jumps to a `#ff8900` splash on launch. CLAUDE.md §2 makes `#ff8900` the brand colour, so the icon follows it. The artwork itself is untouched. |
+| **`MASKED_PCT` stays at 0.52** | The wordmark is the same width in the new art as the old (76.1% vs 76%), so the same percentage renders the letters at the size they have always been. The new art is *shorter*, which only buys circle-mask headroom: diagonal 606/683 vs 631/683 before. |
+
+### Notes
+
+- `ICON_PCT` is now effectively a no-op re-crop — the master already sits at
+  76.1%. It's kept so the three assets stay defined in one place.
+- The sharpen pass is now conditional (`markW < mark.width * 0.9`). It existed
+  for the >20× downscale from the 16612px web logo; sharpening the icon's ~5%
+  resize would only add ringing.
+- **Not device-verified.** Icons are native — this needs an `eas build`.
+
+### Docs debt paid off
+
+The compacted session shipped Contacts without the paperwork CLAUDE.md §8 requires, and nobody
+had audited `docs/` since the app was a scaffold. Every doc was checked against the code.
+
+**New:**
+
+- **`docs/features/FEAT-02-CONTACTS.md`** — Contacts had no feature doc at all, so the only
+  record of it was the diff. Includes the six wire-format traps (JSON-encoded `likes`/`dislikes`,
+  list-vs-detail shape divergence, 500-on-invalid-enum, the hard delete).
+- **`docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md`** — the prompt for the one endpoint
+  that's actually blocking.
+
+**Corrected — the ones that could have caused a bug:**
+
+- 🚨 **`docs/03` told you to write `font-semibold`.** That's the exact class that emits
+  `fontWeight: 600` with no `fontFamily` and **crashes Android** in `TextLayoutManager`. The doc
+  had never been updated after the fix; it now documents `font-sans-semibold` and explains why
+  the prefix exists.
+- **`docs/03` pointed at `lucide-react-native` directly** — the ~3MB barrel. Now points at
+  `@/lib/icons`, and `docs/02` corrects the subpath from `dist/esm/icons/…` (not in `exports`,
+  warns on every import) to `lucide-react-native/icons/…`.
+- **`docs/06`'s query-key factory didn't match the real one.** It listed a `recordingCategories`
+  key that doesn't exist, a one-arg `contacts.list(search)` that's actually `(params)`, and
+  omitted four contacts keys. Anyone copying it would have written keys that never invalidate.
+
+**Corrected — stale but harmless:**
+
+- **`docs/02`'s file tree listed 12 UI primitives; three exist.** React Native Reusables was
+  never installed and the UI is hand-rolled — that was a real decision that had never been
+  written down anywhere. Also added the whole missing `components/contacts/` folder, `lib/icons.ts`,
+  `lib/file-share.ts`, three of the four `api/` modules, and `session-provider.tsx`; removed
+  `container.tsx` and `auth.api.ts`, which don't exist.
+- **`docs/01`** still said "two bottom tabs" and "not in v1: contacts".
+- **`docs/04`** documented contacts as a read-only afterthought and interactions not at all;
+  now lists all nine contacts/interactions routes the app calls, plus share, plus the missing
+  `contacts/:id/fieldy-conversations`.
+- **`IMPLEMENTATION-PLAN.md`** had only Phase 1 ticked out of eleven. Rather than mass-ticking
+  fifty checkboxes nobody maintained, it now opens with a status block naming what shipped and
+  — more usefully — the ten things that genuinely **didn't**.
+- **`CLAUDE.md` rule 1** still described the two-tab Recordings-only scope.
+- `BACKEND-CHANGES.md` §7 reframed from "Optional: write endpoints" to a live blocker, with the
+  shape mismatch between the four server actions spelled out: `assignCallRecordingContact` takes
+  one id and **throws**; the other three take an array and **return** `{success, error?}`. That
+  asymmetry is the whole difficulty of wrapping them.
+- `docs/README.md` re-indexed; `HANDOVER.md` rewritten (it was still dated 2026-09-15).
+
+**Decisions recorded, not changed:** RNR was never installed — the docs now say so instead of
+implying a primitive library exists. `qk.me()` and `recording-categories` are dead code and a
+ghost endpoint respectively; both are now labelled rather than quietly carried.
+
+`npx tsc --noEmit` clean. No source files changed in this session apart from the icon assets.
+
+---
+
+## 2026-09-24 → 28 — Session 5: contacts, share UI, iOS/Android fixes
+
+Shipped across `5f221e9`, `4ee67a7`, `7966c1e`, `b5f972c`. Summarised here
+because the detail lives in the commits.
+
+- **Contacts tab** — list with search and relationship filter, create, detail
+  with overview counters, per-contact call recordings, and interaction logging
+  (`api/contacts.api.ts`, `api/interactions.api.ts`, `components/contacts/*`).
+- **Share transcript by email** — brought the web's feature to the phone
+  (`api/share.api.ts`, `components/recordings/share-transcript-sheet.tsx`),
+  alongside the existing save/copy.
+- **Per-source recording details** — source-specific extras on `[source]/[id]`.
+- **Fixed: white band above the orange hero on notched iPhones** — the login
+  hero's gradient didn't extend under the status bar. `auth-hero.tsx` now takes
+  `topInset` and adds it to the gradient's own `paddingTop`; padding the parent
+  leaves the gradient short.
+- **Fixed: Android preview crashed after the splash** — the `@expo/ui`
+  autolinking exclusion added for an iOS Swift compile error was global, so
+  Android lost a module it needed. Scoped to `ios` in `package.json`.
+  ⚠️ **Still unverified** — needs an Android preview build to confirm.
+
+### Open
+
+- **No endpoint assigns a recording to a contact.** Confirmed by listing all 54
+  non-GET handlers in the PRM API: every recordings route is GET-only except
+  `share` (POST), and `PATCH /contacts/[id]` has no recording field. The web
+  does it through a server action, which native can't call. This traces back to
+  the "v1 is read-only" decision in BACKEND-CHANGES §7. Needs
+  `PUT /api/v1/recordings/:source/:id/contacts` — prompt not yet written.
+- Tasks UI: backend contracts documented, no screens yet.
+
+---
+
 ## 2026-09-23 — Session 4: data layer, dashboard, list, detail, audio, share
 
 Phases 4–8 landed. The app now signs in, shows a dashboard, lists and filters
@@ -337,6 +456,10 @@ the shape of the project, and write the docs we'll work from.
 6. **Logo artwork** — needed for the icon, adaptive icon and splash.
 
 ### Not done / next
+
+> ⏪ **Historical.** This was true on 2026-09-14 and is kept as written. The log is newest-first,
+> so the bottom of this file is the oldest entry — don't read it as current status. For that, see
+> [../HANDOVER.md](../HANDOVER.md).
 
 **Nothing is implemented.** No `package.json`, no `src/`, no app — the repo is `ref/` + `docs/` +
 `CLAUDE.md` + `HANDOVER.md`.
