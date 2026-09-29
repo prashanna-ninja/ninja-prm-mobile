@@ -7,6 +7,12 @@
  * Why this is a script and not a one-off: the sizing rules below are not
  * obvious, and getting them wrong produces bugs that only surface after a
  * 20-minute native build (blank icons, circle-cropped splashes).
+ *
+ * THE MASTER IS `src/assets/images/icon.png` — hand-authored, white mark on a
+ * flat orange ground. It used to be `ref/prm/public/logo.png`, but the icon's
+ * wordmark was redrawn by hand on 2026-09-29 (bigger PRM, different face) and
+ * the web logo no longer matches. Re-point this at the web logo only if the
+ * two are brought back into sync.
  */
 import sharp from "sharp";
 import fs from "node:fs";
@@ -14,8 +20,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SRC = path.join(ROOT, "ref/prm/public/logo.png");
 const OUT = path.join(ROOT, "src/assets/images");
+const MASTER = path.join(OUT, "icon.png");
 const BRAND = { r: 255, g: 137, b: 0 }; // #ff8900
 const SIZE = 1024;
 
@@ -26,37 +32,89 @@ const SIZE = 1024;
  *   reads cleanly on a home screen. Bigger is sharper: at 66% the strokes had
  *   ~15% fewer pixels once iOS scaled the icon to ~60pt, and it looked soft.
  *   iOS icons are corner-rounded, never circle-masked, so this is safe.
+ *   The hand-drawn master already sits at 76.1%, so this is a no-op re-crop.
  *
  * SPLASH/ADAPTIVE 0.52 — these ARE circle-masked (Android 12+ splash and
  *   adaptive launcher icons both mask to ~2/3 of the canvas), so the mark's
  *   DIAGONAL must stay inside that circle. The script asserts this below.
+ *   Kept at 0.52 across the wordmark redraw so the splash mark renders at the
+ *   width it always has; the new art is simply shorter, which buys headroom.
  */
 const ICON_PCT = 0.76;
 const MASKED_PCT = 0.52;
 
-/** The source has a 1px stray column on its right edge; crop it off. */
-async function cleanSource() {
-  const meta = await sharp(SRC).metadata();
-  const inset = Math.max(1, Math.round(meta.width * 0.001));
-  return sharp(SRC)
-    .extract({ left: 0, top: 0, width: meta.width - inset, height: meta.height })
+/**
+ * Lift the white mark off its orange ground into a transparent PNG.
+ *
+ * The master is a flat two-colour image: every pixel is `a` parts white over
+ * `1 - a` parts background. Blue has the widest spread between the two
+ * (bg 22 → white 255), so it recovers `a` with the least rounding error —
+ * and because the ground really is flat, the recovered alpha is exact, not an
+ * approximation. Verified: 0 pixels in the master fall outside that model.
+ *
+ * Doing it this way keeps the antialiased edges intact. A chroma-key or a
+ * threshold would leave an orange fringe that shows up as dirt once the mark
+ * is composited onto the splash's (slightly different) orange.
+ */
+async function extractMark() {
+  const { data, info } = await sharp(MASTER)
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const { width, height, channels } = info;
+  const bg = [data[0], data[1], data[2]]; // top-left is always ground
+  const span = 255 - bg[2];
+  const out = Buffer.alloc(width * height * 4);
+
+  let minX = width, minY = height, maxX = -1, maxY = -1;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const alpha = Math.max(
+        0,
+        Math.min(255, Math.round(((data[(y * width + x) * channels + 2] - bg[2]) / span) * 255)),
+      );
+      const o = (y * width + x) * 4;
+      out[o] = 255;
+      out[o + 1] = 255;
+      out[o + 2] = 255;
+      out[o + 3] = alpha;
+
+      if (alpha > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  if (maxX < 0) throw new Error("no mark found in the master — is it a flat image?");
+
+  // Trim to the ink. Every percentage below is a fraction of the MARK, so the
+  // master's own padding must not be counted.
+  return sharp(out, { raw: { width, height, channels: 4 } })
+    .extract({
+      left: minX,
+      top: minY,
+      width: maxX - minX + 1,
+      height: maxY - minY + 1,
+    })
+    .png()
     .toBuffer();
 }
 
-async function render({ name, widthPct, opaque }) {
-  const source = await cleanSource();
-  const meta = await sharp(source).metadata();
+async function render(mark, { name, widthPct, opaque }) {
+  const meta = await sharp(mark).metadata();
 
   const markW = Math.round(SIZE * widthPct);
   const markH = Math.round((meta.height / meta.width) * markW);
 
-  // The source is ~16600px wide, so this is a >20x downscale. Lanczos keeps
-  // it clean but softens edges; a light sharpen restores the crispness that
-  // matters once iOS scales the icon down again on device.
-  const mark = await sharp(source)
-    .resize({ width: markW, height: markH, kernel: "lanczos3" })
-    .sharpen({ sigma: 0.7 })
-    .toBuffer();
+  // Lanczos softens edges on any real downscale; a light sharpen restores the
+  // crispness that matters once the OS scales the icon down again on device.
+  // Skip it when we're barely resizing — sharpening a 1:1 copy only adds ringing.
+  let resized = sharp(mark).resize({ width: markW, height: markH, kernel: "lanczos3" });
+  if (markW < meta.width * 0.9) resized = resized.sharpen({ sigma: 0.7 });
 
   let pipeline = sharp({
     create: {
@@ -65,7 +123,7 @@ async function render({ name, widthPct, opaque }) {
       channels: 4,
       background: opaque ? { ...BRAND, alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 0 },
     },
-  }).composite([{ input: mark, gravity: "center" }]);
+  }).composite([{ input: await resized.toBuffer(), gravity: "center" }]);
 
   // Flatten so every pixel is opaque, but KEEP the alpha channel — the sibling
   // apps whose iOS icons render correctly all ship 4-channel PNGs.
@@ -95,7 +153,14 @@ async function render({ name, widthPct, opaque }) {
   );
 }
 
-await render({ name: "icon.png", widthPct: ICON_PCT, opaque: true });
-await render({ name: "splash-icon.png", widthPct: MASKED_PCT, opaque: false });
-await render({ name: "adaptive-icon.png", widthPct: MASKED_PCT, opaque: false });
+const mark = await extractMark();
+const markMeta = await sharp(mark).metadata();
+console.log(`mark extracted ${markMeta.width}x${markMeta.height} from icon.png\n`);
+
+// icon.png is both the input and an output: the mark is re-laid onto a
+// 1024 canvas in the exact brand orange. Writing it last would be fine too,
+// but extractMark() has already read the file into memory by now either way.
+await render(mark, { name: "icon.png", widthPct: ICON_PCT, opaque: true });
+await render(mark, { name: "splash-icon.png", widthPct: MASKED_PCT, opaque: false });
+await render(mark, { name: "adaptive-icon.png", widthPct: MASKED_PCT, opaque: false });
 console.log("\nDone. Native change — rebuild with `eas build` to see it on device.");
