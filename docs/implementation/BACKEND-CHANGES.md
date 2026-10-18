@@ -290,3 +290,28 @@ failed. The same happens if `task.update` itself throws for any other reason.
 **Why the app is safe today:** it only ever sends a `dueAt` it built itself
 (`dueAtForDay` in `src/lib/tasks.ts`), and only sends `contactIds` when the set actually
 changed (`toUpdateTaskInput`). The status tick sends `{ status }` alone.
+
+---
+
+## 11. Messages (CrazyTel SMS) — no REST surface
+
+> **Status 2026-10-18: not started; prompt written, awaiting confirmation.**
+> [../prompts/BACKEND-SMS-API.md](../prompts/BACKEND-SMS-API.md).
+
+The web's Messages page (`/dashboard/messages`) is entirely server actions
+(`actions/sms.ts`, `actions/contact-comms.ts`); there is no `/api/v1/sms*` route. Ten thin
+wrappers are needed (setup, threads list with filter/paging, thread messages, mark read, send,
+start thread, link to contact, check, sync, and a contact's texts). CrazyTel setup
+(`actions/crazytel.ts`) stays web-only and needs nothing.
+
+⚠️ `../ninja_prm` is behind `ref/prm` and doesn't contain the SMS module yet — pull before running.
+
+**Update 2026-10-18:** all 10 routes written in `../ninja_prm` on `feat/sms-api` (uncommitted,
+typechecks). Reviewed against the contract — matches, with three differences the app now follows:
+a failed send stores nothing (502); `thread` can be `null`; `unreadTotal` counts threads.
+
+**Open — performance:** `GET /sms/threads/:id/messages` calls `getSmsThreads()` (the whole inbox)
+on every request just to return one row as `thread`. The app polls that route, so the app now
+rations it (focused only, 15s live / 60s quiet — FEAT-04 §2), which cuts the load but not the
+per-request cost. **Proper fix:** build that one thread's row with a query scoped to its own
+conversations instead of `getSmsThreads().find()`.

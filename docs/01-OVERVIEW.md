@@ -18,10 +18,14 @@ taking the one thing that is genuinely better on a phone and building it properl
    interaction. ([FEAT-02](features/FEAT-02-CONTACTS.md))
 5. **Tasks** — the to-do list: open tasks grouped by due date, tick off, create, edit, link to
    contacts. Recording action items land here automatically. ([FEAT-03](features/FEAT-03-TASKS.md))
+6. **Messages** — two-way SMS through CrazyTel: inbox, threads, send, save an unknown number as a
+   contact. ([FEAT-04](features/FEAT-04-MESSAGES.md))
 
-Five bottom tabs: **Home · Recordings · Contacts · Tasks · Settings** — the ceiling for a bottom bar.
+Five bottom tabs: **Home · Recordings · Contacts · Tasks · Messages** — the ceiling for a bottom
+bar. Settings is a gear on Home.
 
-> **The scope widened three times, every time on request.** It began as Recordings-only with two
+> **The scope widened four times, every time on request** (Messages on 2026-10-18, taking
+> Settings' tab slot).** It began as Recordings-only with two
 > tabs and Settings as a gear in the Home header. Settings became a tab on 2026-09-23; Contacts
 > was added on 2026-09-28; Tasks on 2026-09-29. None was drift — but treat the original scoping
 > argument below as history, not policy.

@@ -79,6 +79,13 @@ export { default as ListTodo } from "lucide-react-native/icons/list-todo";
 export { default as Pencil } from "lucide-react-native/icons/pencil";
 export { default as Repeat } from "lucide-react-native/icons/repeat";
 
+/* messages */
+export { default as CheckCheck } from "lucide-react-native/icons/check-check";
+export { default as CircleAlert } from "lucide-react-native/icons/circle-alert";
+export { default as MessagesSquare } from "lucide-react-native/icons/messages-square";
+export { default as Send } from "lucide-react-native/icons/send";
+export { default as UserRound } from "lucide-react-native/icons/user-round";
+
 /* per-source recording details */
 export { default as ExternalLink } from "lucide-react-native/icons/external-link";
 export { default as Quote } from "lucide-react-native/icons/quote";

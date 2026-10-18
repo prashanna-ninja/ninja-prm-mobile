@@ -3,17 +3,20 @@ import { Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { House, Library, ListTodo, Settings, Users } from "@/lib/icons";
+import { useSmsUnreadTotal } from "@/api/sms.api";
+import { House, Library, ListTodo, MessagesSquare, Users } from "@/lib/icons";
 
 /**
- * Logged-IN shell: Home · Recordings · Contacts · Tasks · Settings.
+ * Logged-IN shell: Home · Recordings · Contacts · Tasks · Messages.
  * Five is the ceiling for a bottom bar — a sixth section needs a different
- * navigation shape, not a sixth tab.
+ * navigation shape, not a sixth tab. That's why Settings is a gear on Home
+ * (since 2026-10-18) rather than a tab: Messages took its slot.
  */
 export default function AppLayout() {
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const isDark = scheme === "dark";
+  const unread = useSmsUnreadTotal();
 
   // Android is edge-to-edge and always-on in SDK 57, so the tab bar sits over
   // the gesture/nav bar. Add the inset to the bar's own height rather than
@@ -117,14 +120,26 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="messages"
         options={{
-          title: "Settings",
+          title: "Messages",
           tabBarIcon: ({ color }) => (
-            <Settings size={22} color={color} strokeWidth={2} />
+            <MessagesSquare size={22} color={color} strokeWidth={2} />
           ),
+          tabBarBadge: unread.data ? (unread.data > 99 ? "99+" : unread.data) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: "#FF8900",
+            color: "#FFFFFF",
+            fontFamily: "Bricolage_600SemiBold",
+            fontSize: 10,
+          },
         }}
       />
+      {/* Routable but NOT a tab — reached from the gear on Home. `href: null`
+          is the whole mechanism: expo-router turns it into a hidden item and a
+          null button (TabsClient.js). It only throws if THIS screen also sets
+          `tabBarButton`; the shared one in screenOptions is overridden. */}
+      <Tabs.Screen name="settings" options={{ href: null, title: "Settings" }} />
     </Tabs>
   );
 }

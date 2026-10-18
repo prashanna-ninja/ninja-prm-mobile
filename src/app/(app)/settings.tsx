@@ -1,14 +1,16 @@
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 import { AppHeader } from "@/components/app-header";
 import { Screen } from "@/components/screen";
-import { Moon, Sun } from "@/lib/icons";
+import { ArrowLeft, Moon, Sun } from "@/lib/icons";
 import { initialsFromName } from "@/lib/format";
 import { useSession } from "@/providers/session-provider";
 import { useTheme } from "@/providers/theme-provider";
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { data: session, signOut } = useSession();
   const { theme, toggleTheme } = useTheme();
 
@@ -25,8 +27,23 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <ScrollView contentContainerClassName="px-4 pb-10 gap-6">
-        {/* No back button — Settings is a tab, not a pushed screen. */}
-        <AppHeader title="Settings" />
+        {/* Not a tab any more (2026-10-18) — reached from the gear on Home,
+            so it needs a way back. replace, not back(): a hidden tab has no
+            stack of its own to pop. */}
+        <AppHeader
+          title="Settings"
+          left={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to Home"
+              onPress={() => router.replace("/")}
+              hitSlop={10}
+              className="h-10 w-10 items-center justify-center rounded-full border border-border active:opacity-70"
+            >
+              <ArrowLeft size={18} color="#52525B" strokeWidth={2} />
+            </Pressable>
+          }
+        />
 
         <View className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-4">
           <View className="h-12 w-12 items-center justify-center rounded-full bg-primary-soft">

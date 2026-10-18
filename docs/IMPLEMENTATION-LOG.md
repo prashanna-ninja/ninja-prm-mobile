@@ -8,6 +8,56 @@ cheap; write it while the reasoning is still fresh.
 
 ---
 
+## 2026-10-18 — Session 8: Messages, and Settings moves to a gear
+
+The web PRM grew a Messages module (two-way SMS through CrazyTel, `ref/prm` `1572969`…`73eb814`).
+It is entirely server actions, so the first step was the backend prompt
+(`docs/prompts/BACKEND-SMS-API.md`, `BACKEND-CHANGES` §11). The user then asked for the UI to be
+built against those assumed endpoints, with **Messages taking Settings' tab slot and Settings
+moving to the top-right of Home in place of the theme toggle.** Fourth scope widening.
+Spec: `docs/features/FEAT-04-MESSAGES.md`.
+
+### Added
+
+- `(app)/messages/` — inbox, `[threadId]`, `new`; `api/sms.api.ts`, `types/sms.types.ts`,
+  `lib/sms.ts`, `qk.sms.*`, `components/messages/` (thread row + avatar, filters, bubble,
+  composer, line picker, save-contact sheet).
+- Copied from Ninja CRM Mobile: `hooks/use-keyboard-height.ts` (CLAUDE.md referenced it, but it
+  had never been brought over) and `lib/sms-segments.ts`.
+- `hooks/use-app-active.ts` — gates polling on AppState.
+- Contact detail: a **Text** button per phone number.
+
+### Changed
+
+- Tabs: Settings → Messages (with an unread badge). Settings is `href: null` and has a back arrow.
+- Home: theme toggle → Settings gear.
+
+### Decisions
+
+| Decision | Why |
+| -------- | --- |
+| **Build the UI before the backend exists** | The user's call. The contract is pinned in the prompt and copied from the server actions' own return types, so drift should be small — but `sms.types.ts` is marked UNVERIFIED until real JSON is seen. |
+| **Inverted FlatList for the thread** | Opens at the newest text without a scroll-to-end, and virtualises — a thread can hold 1,000 messages. Ninja CRM Mobile's ScrollView renders them all. |
+| **Optimistic send, failed bubbles kept, retry reuses `clientRequestId`** | A dropped connection after CrazyTel accepted the text is the case idempotency exists for. A fresh id on retry would double-send. |
+| **Inbox not polled; thread polled 15s; badge polled 60s; all off in the background** | Same cadence as the web for the open thread. An infinite query refetches every page, so the inbox refreshes on focus/pull instead. |
+| **`POST /sms/check` on pull, `POST /sms/sync` only on ⟳** | Check is one self-throttled CrazyTel request; sync is up to fifty. |
+| **Sheet inputs at the top, keyboard measured** | No KeyboardAvoidingView under edge-to-edge (gotcha 6). |
+
+### Found along the way
+
+- 🐛 **Contact detail rendered `phone` raw** — it's a JSON-encoded list, so the screen showed
+  `["0403 656 153"]` and dialled it. Fixed: one row per number, `tel:` stripped to digits.
+- 🚨 **`../ninja_prm` is behind `ref/prm`** and has no SMS code. Pull before running the prompt.
+- Typed routes only regenerated with a NON-CI `expo start` this time (`CI=1` didn't write them).
+
+### Verified vs. not
+
+- ✅ `npx tsc --noEmit` clean with regenerated route types.
+- ✅ `npx expo export --platform android` — 5.9MB (exported to a temp dir, not the repo).
+- ❌ **No backend, so nothing has run end-to-end.** Not device-verified either.
+
+---
+
 ## 2026-09-29 — Session 7: Tasks, the fifth tab
 
 Contacts went out on iOS without the assign-a-recording backend change. The user then widened

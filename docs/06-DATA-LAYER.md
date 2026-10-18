@@ -84,6 +84,15 @@ export const qk = {
     detail: (id: string)     => ["tasks", "detail", id] as const,
   },
 
+  sms: {
+    all:         ()               => ["sms"] as const,
+    setup:       ()               => ["sms", "setup"] as const,
+    unread:      ()               => ["sms", "unread"] as const,     // tab badge
+    threadLists: ()               => ["sms", "threads"] as const,    // prefix
+    threads:     (params: object) => ["sms", "threads", params] as const,
+    messages:    (threadId: string) => ["sms", "messages", threadId] as const,
+  },
+
   recordings: {
     all:    ()                          => ["recordings"] as const,
     stats:  ()                          => ["recordings", "stats"] as const,

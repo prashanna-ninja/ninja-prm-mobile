@@ -9,7 +9,7 @@ import { Screen } from "@/components/screen";
 import { RecordingRowSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { useRecordings, useRecordingStats } from "@/api/recordings.api";
-import { ChevronRight, Library, Moon, Sun } from "@/lib/icons";
+import { ChevronRight, Library, Settings } from "@/lib/icons";
 import { percentChange, pluralize } from "@/lib/format";
 import { useSession } from "@/providers/session-provider";
 import { useTheme } from "@/providers/theme-provider";
@@ -52,7 +52,7 @@ export default function HomeScreen() {
           title={greeting(firstName)}
           titleLines={2}
           subtitle="Everything you've captured, in one place."
-          right={<ThemeToggle />}
+          right={<SettingsButton />}
         />
 
         {/* A wall of zeroes is a worse first impression than one honest empty
@@ -186,24 +186,24 @@ function greeting(firstName?: string) {
   return firstName ? `${part},\n${firstName}` : part;
 }
 
-/** Light/dark switch. Lives here because Home is where you land. */
-function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === "dark";
+/**
+ * Settings. Since 2026-10-18 it's a gear here rather than a tab — Messages
+ * took its slot in the bar. The theme switch that used to sit here lives on
+ * the Settings screen (Appearance), one tap further in.
+ */
+function SettingsButton() {
+  const router = useRouter();
+  const { theme } = useTheme();
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Switch to ${isDark ? "light" : "dark"} mode`}
-      onPress={toggleTheme}
+      accessibilityLabel="Settings"
+      onPress={() => router.push("/settings")}
       hitSlop={10}
       className="h-10 w-10 items-center justify-center rounded-full border border-border active:opacity-70"
     >
-      {isDark ? (
-        <Sun size={18} color="#A1A1AA" strokeWidth={2} />
-      ) : (
-        <Moon size={18} color="#52525B" strokeWidth={2} />
-      )}
+      <Settings size={18} color={theme === "dark" ? "#A1A1AA" : "#52525B"} strokeWidth={2} />
     </Pressable>
   );
 }

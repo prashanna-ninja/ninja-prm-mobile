@@ -21,6 +21,7 @@ One doc per feature. A feature doc is the spec: scope, screens, data, states, do
 - [features/FEAT-01-RECORDINGS.md](features/FEAT-01-RECORDINGS.md) — **Recordings** (the original v1 scope)
 - [features/FEAT-02-CONTACTS.md](features/FEAT-02-CONTACTS.md) — **Contacts** (added 2026-09-28, outside the original scope)
 - [features/FEAT-03-TASKS.md](features/FEAT-03-TASKS.md) — **Tasks**, the to-do list (added 2026-09-29, outside the original scope)
+- [features/FEAT-04-MESSAGES.md](features/FEAT-04-MESSAGES.md) — **Messages**, CrazyTel SMS (added 2026-10-18; UI built ahead of its backend)
 
 ## Implementation
 

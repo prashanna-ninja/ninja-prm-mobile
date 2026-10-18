@@ -28,6 +28,7 @@ import {
   useContactInteractions,
   useContactRecordings,
 } from "@/api/interactions.api";
+import { useSmsSetup, useStartSmsThread } from "@/api/sms.api";
 import { formatDateCompact } from "@/lib/format";
 import {
   Archive,
@@ -39,6 +40,7 @@ import {
   Heart,
   Mail,
   MapPin,
+  MessageSquare,
   Phone,
   Plus,
   Trash,
@@ -53,6 +55,9 @@ export default function ContactDetailScreen() {
   const query = useContact(id);
   const recordings = useContactRecordings(id);
   const archive = useArchiveContact();
+  const smsSetup = useSmsSetup();
+  const smsReady = smsSetup.data?.configured === true;
+  const startSms = useStartSmsThread();
   const remove = useDeleteContact();
 
   const [logOpen, setLogOpen] = React.useState(false);
@@ -93,6 +98,19 @@ export default function ContactDetailScreen() {
     );
   };
 
+  const textNumber = async (phone: string) => {
+    try {
+      const { threadId } = await startSms.mutateAsync({ to: phone });
+      router.push({
+        pathname: "/messages/[threadId]",
+        params: { threadId, title: data?.name ?? phone, fromContact: id },
+      });
+    } catch (err) {
+      Alert.alert("Couldn't open the conversation", describeError(err));
+    }
+  };
+
+  const phones = parseStringList(data?.phone);
   const likes = parseStringList(data?.likes);
   const dislikes = parseStringList(data?.dislikes);
   const openTasks = (data?.tasks ?? []).filter((t) => t.status === "OPEN");
@@ -155,13 +173,34 @@ export default function ContactDetailScreen() {
             {/* Tapping a phone or email should DO the thing — that's most of
                 why you open a contact on a phone at all. */}
             <View className="gap-2">
-              {data.phone ? (
+              {/* `phone` is a JSON-encoded LIST (["0403…","02…"]) — the PRM
+                  stores every number a contact has. Showing it raw put the
+                  brackets on screen and in the tel: link. One row each. */}
+              {phones.map((phone) => (
                 <ContactAction
+                  key={phone}
                   icon={<Phone size={16} color="#AD5100" strokeWidth={2} />}
-                  label={data.phone}
-                  onPress={() => Linking.openURL(`tel:${data.phone}`)}
+                  label={phone}
+                  onPress={() => Linking.openURL(`tel:${phone.replace(/[^\d+]/g, "")}`)}
+                  trailing={
+                    smsReady ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Text ${phone}`}
+                        onPress={() => void textNumber(phone)}
+                        disabled={startSms.isPending}
+                        hitSlop={8}
+                        className="flex-row items-center gap-1 rounded-full bg-primary-soft px-3 py-1.5 active:opacity-70"
+                      >
+                        <MessageSquare size={13} color="#AD5100" strokeWidth={2.2} />
+                        <Text className="font-sans-medium text-xs text-primary-strong">
+                          Text
+                        </Text>
+                      </Pressable>
+                    ) : null
+                  }
                 />
-              ) : null}
+              ))}
               {data.email ? (
                 <ContactAction
                   icon={<Mail size={16} color="#AD5100" strokeWidth={2} />}
@@ -463,10 +502,13 @@ function ContactAction({
   icon,
   label,
   onPress,
+  trailing,
 }: {
   icon: React.ReactNode;
   label: string;
   onPress?: () => void;
+  /** A second action on the same row, e.g. "Text" next to a number. */
+  trailing?: React.ReactNode;
 }) {
   const interactive = !!onPress;
   return (
@@ -488,6 +530,7 @@ function ContactAction({
       >
         {label}
       </Text>
+      {trailing}
     </Pressable>
   );
 }

@@ -4,55 +4,50 @@ A React Native + Expo app for **Ninja PRM**. It reuses the existing Next.js PRM 
 (`ref/prm`) — same database, same Better Auth session, same API. This doc is the single entry
 point: **what exists, how to run it, what to watch out for, and what to do next.**
 
-> ## Status — 2026-09-29 (session 7)
+> ## Status — 2026-10-18 (session 8)
 >
-> **Released on iOS:** magic-link sign-in, Home dashboard, the unified recordings list,
-> per-source detail with audio playback, save / copy / email-share of transcripts, and Contacts
-> (list, create, detail, interaction logging) — shipped without the assign-a-recording backend
-> change.
+> **Released on iOS:** magic-link sign-in, Home, Recordings (list, detail, audio, transcripts),
+> Contacts.
 >
-> **Just built, not yet on a device: Tasks** — the fifth tab. To-do list grouped by due date
-> (Overdue · Today · This week · Later · No due date), optimistic tick-off, To do / Done / All +
-> priority filters, create / edit / cancel / delete, related contacts, and a link back to the
-> recording an auto-generated task came from. Contacts' Open tasks block now opens tasks and
-> can create one pre-linked. **Typecheck clean and the Android bundle exports (5.8MB); nothing
-> device-verified.** Spec: [docs/features/FEAT-03-TASKS.md](docs/features/FEAT-03-TASKS.md).
-> **Pure JS — no native change**, so a Metro reload on the existing dev build is enough to test.
+> **Built, never on a device:**
+> - **Tasks** (session 7, branch `feat/tasks`) — [FEAT-03](docs/features/FEAT-03-TASKS.md).
+> - **Messages** (this session, branch `feat/messages`, stacked on `feat/tasks`) — two-way CrazyTel
+>   SMS: inbox with filters and line chips, threads with optimistic send + idempotent retry,
+>   new message, save an unknown number as a contact, Text from a contact, unread tab badge.
+>   [FEAT-04](docs/features/FEAT-04-MESSAGES.md). 🚨 **Built against a backend that doesn't exist
+>   yet** — every Messages screen errors until `docs/prompts/BACKEND-SMS-API.md` ships.
 >
-> Expo SDK 57 + **NativeWind 4.2.7 (v4 stable)** + Tailwind 3.4.17, brand tokens (`#ff8900`),
-> Bricolage Grotesque in 4 weights, persisted light/dark theme. Five tabs: Home · Recordings ·
-> Contacts · Tasks · Settings.
+> **Navigation changed (the user's call):** tabs are now Home · Recordings · Contacts · Tasks ·
+> **Messages**. Settings left the bar and is a **gear top-right on Home**, replacing the theme
+> toggle (theme lives in Settings → Appearance).
 >
-> ### ⚠️ Uncommitted junk in the working tree — clean it up first
->
-> Running `npm run lint` made `expo lint` **auto-install ESLint**: it added `eslint` to
-> `package.json`, rewrote ~7,500 lines of `package-lock.json`, and created `eslint.config.js`.
-> None of that is part of the Tasks work, and the revert was blocked by a permission prompt.
-> Restore with `git checkout -- package.json package-lock.json`, delete `eslint.config.js` and
-> `.verify/`, then `npm ci`. **Lint is not actually configured in this repo** — `npm run lint`
-> is a trap until someone sets it up deliberately.
+> Both features are pure JS — no native change — so a Metro reload on the dev build tests them.
+> Typecheck clean, Android bundle exports (5.9MB).
 >
 > ### What to do next
 >
-> 1. **Device-test Tasks** — the checklist is FEAT-03 §4. The one that matters most: create a
->    task with a due date on the phone and confirm the **web** shows the same day (the timezone
->    handling is reasoned, not observed).
-> 2. **Android preview build.** The post-splash crash fix (scoping the `@expo/ui` autolinking
->    exclusion to iOS only) is **still unverified**: `eas build --platform android --profile preview`.
->    The redrawn icon rides along.
-> 3. **Assigning a recording to a contact** still needs `PUT /api/v1/recordings/:source/:id/contacts`
->    — prompt: `docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md`. Run in `ninja_prm`, ask first.
-> 4. **Task PATCH data-loss bug** (backend hardening, not a blocker — the app can't trigger it):
->    `docs/prompts/BACKEND-TASK-PATCH-FIX.md`.
-> 5. Maybe: open / overdue task counts on Home (FEAT-03 §5).
+> 1. **Run the SMS backend prompt** — `docs/prompts/BACKEND-SMS-API.md`. 🚨 `../ninja_prm` is
+>    BEHIND `ref/prm` and has no SMS code; pull it first. Then check every field in
+>    `src/types/sms.types.ts` against the real JSON.
+> 2. **Device-test Tasks and Messages** — checklists in FEAT-03 §4 and FEAT-04 §5. The keyboard
+>    on the Messages composer needs checking on **both** platforms.
+> 3. **Merge** `feat/tasks` then `feat/messages` into `main`.
+> 4. Android preview build — the post-splash crash fix is still unverified:
+>    `eas build --platform android --profile preview`.
+> 5. Still blocked on the backend: assign a recording to a contact
+>    (`docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md`).
+>
+> ### Don't
+>
+> - **Don't run `npm run lint`.** No ESLint is configured, so `expo lint` installs one and
+>   rewrites `package-lock.json` (it did in session 7).
 >
 > ### Known, unfixed (backend)
 >
-> - `PATCH /api/v1/tasks/[id]` deletes contact links *before* validating `dueAt`, with no
->   transaction — a bad date loses the links. **Data loss**, but unreachable from the app.
->   `BACKEND-CHANGES` §10.
-> - `/me` signs the user out during a DB outage (it can't tell "no session" from "no database").
-> - Several endpoints 500 rather than 400 on invalid enum input (tasks: `status`/`priority`).
+> - `PATCH /api/v1/tasks/[id]` can lose a task's contact links on a bad date — unreachable from
+>   the app. `BACKEND-CHANGES` §10.
+> - `/me` signs the user out during a DB outage.
+> - Several endpoints 500 rather than 400 on invalid enum input.
 
 ---
 
@@ -62,27 +57,20 @@ Paste this in verbatim:
 
 ```
 Read CLAUDE.md and HANDOVER.md. We are picking up Ninja PRM Mobile after the
-2026-09-29 session 7, which built the Tasks tab (FEAT-03). Contacts is released
-on iOS; Tasks has never run on a device.
+2026-10-18 session 8, which built Messages (FEAT-04) against a backend that
+doesn't exist yet, and moved Settings from the tab bar to a gear on Home.
+Tasks (FEAT-03) and Messages are both unmerged and never run on a device.
 
-First: the working tree has ESLint junk from an accidental `expo lint` run -
-see the warning in HANDOVER's status block and clean it up before anything else.
+In priority order:
 
-Then, in priority order:
-
-1. DEVICE-TEST TASKS. Pure JS, so Metro reload on the dev build is enough.
-   Checklist: docs/features/FEAT-03-TASKS.md section 4. Most important: a due
-   date set on the phone must show the same day on the web.
-
-2. ANDROID PREVIEW BUILD - unverified post-splash crash fix.
-   `eas build --platform android --profile preview`
-
-3. ASSIGN A RECORDING TO A CONTACT - blocked on the backend.
-   docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md, run in ninja_prm. Ask first.
+1. Has the SMS backend (docs/prompts/BACKEND-SMS-API.md) shipped? If yes,
+   diff its real JSON against src/types/sms.types.ts and fix any drift.
+2. Device-test Tasks and Messages (FEAT-03 section 4, FEAT-04 section 5).
+3. Merge feat/tasks, then feat/messages.
 
 Before writing any code, read CLAUDE.md's gotcha list - especially 4b
 (never give a Pressable a function style) and 4c (import icons from
-@/lib/icons).
+@/lib/icons). Don't run `npm run lint`.
 
 Tell me which thread you'd start with and what the first concrete step is.
 Don't write code yet.
@@ -92,8 +80,9 @@ Don't write code yet.
 
 ## 1. What we're building
 
-v1 started as **Recordings and nothing else**; Contacts was added on 2026-09-28 and Tasks on
-2026-09-29, both at the user's request. Five bottom tabs — the ceiling:
+v1 started as **Recordings and nothing else**; Contacts (2026-09-28), Tasks (2026-09-29) and
+Messages (2026-10-18) were added at the user's request. Five bottom tabs — the ceiling — with
+Settings as a gear on Home:
 
 | Tab | Screen | What's on it |
 | --- | ------ | ------------ |
@@ -105,7 +94,9 @@ v1 started as **Recordings and nothing else**; Contacts was added on 2026-09-28 
 | **Tasks** | `(app)/tasks/index` | To-do list grouped by due date, tick off, To do / Done / All + priority, **New** |
 | — | `(app)/tasks/[id]` | Detail — due, notes, related contacts, source recording, cancel / reopen / delete |
 | — | `(app)/tasks/[id]/edit` · `new` | Create / edit form, with a contact picker and a JS date grid |
-| **Settings** | `(app)/settings` | Account, theme, sign out |
+| **Messages** | `(app)/messages/index` | SMS inbox: search, All / Unread / Contacts / Unknown, line chips, unread badge on the tab |
+| — | `(app)/messages/[threadId]` · `new` | Conversation (optimistic send, retry, save contact, call) · start a new one |
+| *(gear on Home)* | `(app)/settings` | Account, theme, sign out — a hidden route, not a tab, since 2026-10-18 |
 
 Plus magic-link sign-in that opens **straight into the app** from the email.
 
@@ -113,8 +104,9 @@ Recordings come from four sources — `call`, `plaud`, `granola`, `fieldy` — m
 Calls and Plaud have audio; Granola and Fieldy are text only.
 
 Full specs: **[docs/features/FEAT-01-RECORDINGS.md](docs/features/FEAT-01-RECORDINGS.md)**,
-**[docs/features/FEAT-02-CONTACTS.md](docs/features/FEAT-02-CONTACTS.md)** and
-**[docs/features/FEAT-03-TASKS.md](docs/features/FEAT-03-TASKS.md)**.
+**[docs/features/FEAT-02-CONTACTS.md](docs/features/FEAT-02-CONTACTS.md)**,
+**[docs/features/FEAT-03-TASKS.md](docs/features/FEAT-03-TASKS.md)** and
+**[docs/features/FEAT-04-MESSAGES.md](docs/features/FEAT-04-MESSAGES.md)**.
 
 ---
 
@@ -287,6 +279,7 @@ Plus two specific to this app:
 | [docs/features/FEAT-01-RECORDINGS.md](docs/features/FEAT-01-RECORDINGS.md) | **The v1 spec** — screens, states, done criteria |
 | [docs/features/FEAT-02-CONTACTS.md](docs/features/FEAT-02-CONTACTS.md) | Contacts |
 | [docs/features/FEAT-03-TASKS.md](docs/features/FEAT-03-TASKS.md) | Tasks — the to-do list, and its wire-format traps |
+| [docs/features/FEAT-04-MESSAGES.md](docs/features/FEAT-04-MESSAGES.md) | Messages — CrazyTel SMS, built ahead of its backend |
 | [docs/implementation/IMPLEMENTATION-PLAN.md](docs/implementation/IMPLEMENTATION-PLAN.md) | Phased build order + definition of done |
 | [docs/implementation/BACKEND-CHANGES.md](docs/implementation/BACKEND-CHANGES.md) | What `ref/prm` needs |
 | [docs/IMPLEMENTATION-LOG.md](docs/IMPLEMENTATION-LOG.md) | Chronological diary of changes & decisions |

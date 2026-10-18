@@ -113,3 +113,5 @@ Every mutation invalidates `qk.contacts.all()`; logging an interaction also inva
   tappable and **＋ Task** creates one pre-linked to the contact. The block still shows at most
   5, OPEN only — that's the detail route's `taskContacts` include.
 - **Companies and tags can't be created** from the app; only picked if they already exist.
+- ~~`phone` rendered raw.~~ Fixed 2026-10-18: it's a JSON-encoded list like `likes`, now one row
+  per number, each with a **Text** button ([FEAT-04](FEAT-04-MESSAGES.md) §4).
