@@ -8,6 +8,15 @@ cheap; write it while the reasoning is still fresh.
 
 ---
 
+## 2026-10-20 — Messages moves to the second tab
+
+At the user's request the bar is now **Home · Messages · Recordings · Contacts · Tasks**. Tabs
+render in `Tabs.Screen` declaration order in `src/app/(app)/_layout.tsx`, so this was moving one
+block; no route, link or param changed. CLAUDE.md rule 1, HANDOVER, 01-OVERVIEW and FEAT-04 updated.
+Typecheck clean; not device-verified.
+
+---
+
 ## 2026-10-18 — Session 8: Messages, and Settings moves to a gear
 
 The web PRM grew a Messages module (two-way SMS through CrazyTel, `ref/prm` `1572969`…`73eb814`).

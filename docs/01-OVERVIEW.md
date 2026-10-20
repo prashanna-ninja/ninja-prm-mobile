@@ -21,7 +21,7 @@ taking the one thing that is genuinely better on a phone and building it properl
 6. **Messages** — two-way SMS through CrazyTel: inbox, threads, send, save an unknown number as a
    contact. ([FEAT-04](features/FEAT-04-MESSAGES.md))
 
-Five bottom tabs: **Home · Recordings · Contacts · Tasks · Messages** — the ceiling for a bottom
+Five bottom tabs, in this order: **Home · Messages · Recordings · Contacts · Tasks** — the ceiling for a bottom
 bar. Settings is a gear on Home.
 
 > **The scope widened four times, every time on request** (Messages on 2026-10-18, taking

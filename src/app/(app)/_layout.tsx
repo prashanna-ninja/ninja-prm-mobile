@@ -7,7 +7,9 @@ import { useSmsUnreadTotal } from "@/api/sms.api";
 import { House, Library, ListTodo, MessagesSquare, Users } from "@/lib/icons";
 
 /**
- * Logged-IN shell: Home · Recordings · Contacts · Tasks · Messages.
+ * Logged-IN shell: Home · Messages · Recordings · Contacts · Tasks.
+ * Tabs render in DECLARATION order, so the order below IS the bar's order.
+ * Messages moved to second at the user's request on 2026-10-20.
  * Five is the ceiling for a bottom bar — a sixth section needs a different
  * navigation shape, not a sixth tab. That's why Settings is a gear on Home
  * (since 2026-10-18) rather than a tab: Messages took its slot.
@@ -93,6 +95,22 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="messages"
+        options={{
+          title: "Messages",
+          tabBarIcon: ({ color }) => (
+            <MessagesSquare size={22} color={color} strokeWidth={2} />
+          ),
+          tabBarBadge: unread.data ? (unread.data > 99 ? "99+" : unread.data) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: "#FF8900",
+            color: "#FFFFFF",
+            fontFamily: "Bricolage_600SemiBold",
+            fontSize: 10,
+          },
+        }}
+      />
+      <Tabs.Screen
         name="recordings"
         options={{
           title: "Recordings",
@@ -117,22 +135,6 @@ export default function AppLayout() {
           tabBarIcon: ({ color }) => (
             <ListTodo size={22} color={color} strokeWidth={2} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="messages"
-        options={{
-          title: "Messages",
-          tabBarIcon: ({ color }) => (
-            <MessagesSquare size={22} color={color} strokeWidth={2} />
-          ),
-          tabBarBadge: unread.data ? (unread.data > 99 ? "99+" : unread.data) : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: "#FF8900",
-            color: "#FFFFFF",
-            fontFamily: "Bricolage_600SemiBold",
-            fontSize: 10,
-          },
         }}
       />
       {/* Routable but NOT a tab — reached from the gear on Home. `href: null`

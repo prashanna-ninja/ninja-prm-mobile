@@ -14,7 +14,7 @@ sent from the user's own CrazyTel numbers. Added at the user's request on 2026-1
 
 | Before | After |
 | ------ | ----- |
-| Tabs: Home · Recordings · Contacts · Tasks · **Settings** | Tabs: Home · Recordings · Contacts · Tasks · **Messages** |
+| Tabs: Home · Recordings · Contacts · Tasks · **Settings** | Tabs: Home · **Messages** · Recordings · Contacts · Tasks (Messages moved to second on 2026-10-20) |
 | Home header, top right: theme toggle | Home header, top right: **Settings gear** |
 | Theme toggle on Home *and* in Settings | Theme toggle in Settings → Appearance only |
 

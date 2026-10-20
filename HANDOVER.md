@@ -17,8 +17,8 @@ point: **what exists, how to run it, what to watch out for, and what to do next.
 >   [FEAT-04](docs/features/FEAT-04-MESSAGES.md). 🚨 **Built against a backend that doesn't exist
 >   yet** — every Messages screen errors until `docs/prompts/BACKEND-SMS-API.md` ships.
 >
-> **Navigation changed (the user's call):** tabs are now Home · Recordings · Contacts · Tasks ·
-> **Messages**. Settings left the bar and is a **gear top-right on Home**, replacing the theme
+> **Navigation changed (the user's call):** tabs are now Home · **Messages** · Recordings ·
+> Contacts · Tasks (Messages moved to second on 2026-10-20). Settings left the bar and is a **gear top-right on Home**, replacing the theme
 > toggle (theme lives in Settings → Appearance).
 >
 > Both features are pure JS — no native change — so a Metro reload on the dev build tests them.
