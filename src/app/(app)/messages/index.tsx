@@ -12,6 +12,7 @@ import {
 
 import { AppHeader } from "@/components/app-header";
 import { MessageFilters } from "@/components/messages/message-filters";
+import { PushPromptCard } from "@/components/notifications/push-prompt-card";
 import { ThreadRow } from "@/components/messages/thread-row";
 import { Screen } from "@/components/screen";
 import { SearchBar } from "@/components/ui/search-bar";
@@ -144,6 +145,7 @@ export default function MessagesScreen() {
               onLineChange={setLineKey}
               lines={lines}
             />
+            <PushPromptCard />
           </>
         ) : null}
       </View>

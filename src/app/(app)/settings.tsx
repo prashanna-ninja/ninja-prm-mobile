@@ -4,14 +4,17 @@ import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 import { AppHeader } from "@/components/app-header";
 import { Screen } from "@/components/screen";
+import { NotificationSettings } from "@/components/settings/notification-settings";
 import { ArrowLeft, Moon, Sun } from "@/lib/icons";
 import { initialsFromName } from "@/lib/format";
+import { usePush } from "@/providers/push-provider";
 import { useSession } from "@/providers/session-provider";
 import { useTheme } from "@/providers/theme-provider";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { data: session, signOut } = useSession();
+  const { unregisterForSignOut } = usePush();
   const { theme, toggleTheme } = useTheme();
 
   const user = session?.user;
@@ -20,7 +23,17 @@ export default function SettingsScreen() {
   const confirmSignOut = () => {
     Alert.alert("Sign out?", "You'll need a new sign-in link to get back in.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Sign out", style: "destructive", onPress: () => void signOut() },
+      {
+        text: "Sign out",
+        style: "destructive",
+        // Drop this phone's push token FIRST, while the session can still
+        // authorise it — otherwise the next person to sign in here would get
+        // this account's texts.
+        onPress: async () => {
+          await unregisterForSignOut();
+          await signOut();
+        },
+      },
     ]);
   };
 
@@ -83,6 +96,10 @@ export default function SettingsScreen() {
               )}
             </View>
           </Pressable>
+        </Section>
+
+        <Section title="Notifications">
+          <NotificationSettings />
         </Section>
 
         <Section title="Account">

@@ -6,6 +6,7 @@ import { View } from "react-native";
 
 import { useAuthDeepLink } from "@/hooks/use-auth-deep-link";
 import { appFonts } from "@/lib/fonts";
+import { PushProvider } from "@/providers/push-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { SessionProvider, useSession } from "@/providers/session-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -15,7 +16,11 @@ export default function RootLayout() {
     <ThemeProvider>
       <QueryProvider>
         <SessionProvider>
-          <RootNavigator />
+          {/* Inside Session (it needs the user, for the shared-phone guard)
+              and Query (a push arriving while open invalidates queries). */}
+          <PushProvider>
+            <RootNavigator />
+          </PushProvider>
         </SessionProvider>
       </QueryProvider>
     </ThemeProvider>

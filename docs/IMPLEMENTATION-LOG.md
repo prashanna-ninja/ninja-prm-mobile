@@ -8,6 +8,56 @@ cheap; write it while the reasoning is still fresh.
 
 ---
 
+## 2026-10-27 — Session 9: push notifications (app side)
+
+The user asked for push "like we had in the Ninja CRM", with a backend prompt and the account /
+env changes given that Upstash already exists for the CRM. Studied `../ninja_crm` (lib/push,
+api/push, the checklist) and `../ninja_crm_mobile` (push provider, bridge, doc 09) — the copy in
+`ref/ninja-crm-mobile` predates push. Spec: `docs/features/FEAT-05-PUSH.md`.
+
+### The one design change from the CRM
+
+The CRM hangs push off its Notification table (outbox row → notificationId). **The PRM has no
+Notification table and no notification centre**, so the outbox row carries its own title, body
+and data. Everything else — QStash, FOR UPDATE SKIP LOCKED, receipts, dead-token pruning,
+`after()` — is ported as-is.
+
+### Added (app)
+
+- `providers/push-provider.tsx`, `components/notifications/push-bridge.tsx`, `lib/push-links.ts`
+  (payload contract), `lib/push-categories.ts` (category contract), `api/push.api.ts`,
+  `components/settings/notification-settings.tsx`, `components/notifications/push-prompt-card.tsx`,
+  `hooks/use-app-foreground.ts` (copied).
+- `expo-notifications` + `expo-device` (verified in the ROOT package.json — gotcha 8).
+- `app.json`: the expo-notifications plugin with icon + `#ff8900`.
+- `scripts/generate-icons.mjs` renders `notification-icon.png` (white mark, alpha-only, cropped
+  tight) and now accepts file names so one asset can be added without re-encoding the others.
+- Sign-out unregisters the token first.
+
+### Decisions
+
+| Decision | Why |
+| -------- | --- |
+| **Two categories: Texts (on), Tasks due today (off)** | The PRM's directed, time-sensitive event is a text. The morning summary is opt-in for the CRM's reason. Recordings / auto-tasks deliberately left for later. |
+| **Payload names its destination (`threadId`)** | The CRM parses a phone number back out of the title for unknown senders — fragile, flagged in its own checklist. A PRM thread id is the full address. |
+| **Badge = unread conversations** | No notification centre to count; this is the number the Messages tab already shows, and the server sends the same one. |
+| **Push only for texts under 10 minutes old** (backend) | The first CrazyTel sync imported ~9,800 messages; a re-import must not become 9,800 pushes. |
+| **Android channel importance HIGH** (CRM: DEFAULT) | Heads-up banners for texts. |
+| **No `googleServicesFile` in app.json yet** | Pointing at a file that doesn't exist fails the Android build. Added when the Firebase app exists. |
+
+### Slip, caught and reverted
+
+An edit to `generate-icons.mjs` failed to apply and the next command ran anyway, regenerating the
+three shipped icons. Restored from git before anything else; only `notification-icon.png` is new.
+
+### Verified vs. not
+
+- ✅ `npx tsc --noEmit` clean; Android bundle exports (6MB); `expo config --type introspect`
+  shows the notification icon and colour in the Android manifest.
+- ❌ No backend, no credentials, no native build — nothing has run.
+
+---
+
 ## 2026-10-20 — Messages moves to the second tab
 
 At the user's request the bar is now **Home · Messages · Recordings · Contacts · Tasks**. Tabs

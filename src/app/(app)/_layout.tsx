@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSmsUnreadTotal } from "@/api/sms.api";
+import { PushBridge } from "@/components/notifications/push-bridge";
 import { House, Library, ListTodo, MessagesSquare, Users } from "@/lib/icons";
 
 /**
@@ -26,7 +27,11 @@ export default function AppLayout() {
   const barHeight = 58 + insets.bottom;
 
   return (
-    <Tabs
+    <>
+      {/* Here, not at the root: the user is signed in and the tabs are
+          mounted, so a tapped notification has somewhere to navigate. */}
+      <PushBridge />
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#FF8900",
@@ -142,6 +147,7 @@ export default function AppLayout() {
           null button (TabsClient.js). It only throws if THIS screen also sets
           `tabBarButton`; the shared one in screenOptions is overridden. */}
       <Tabs.Screen name="settings" options={{ href: null, title: "Settings" }} />
-    </Tabs>
+      </Tabs>
+    </>
   );
 }

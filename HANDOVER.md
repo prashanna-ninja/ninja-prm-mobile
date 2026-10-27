@@ -4,18 +4,19 @@ A React Native + Expo app for **Ninja PRM**. It reuses the existing Next.js PRM 
 (`ref/prm`) — same database, same Better Auth session, same API. This doc is the single entry
 point: **what exists, how to run it, what to watch out for, and what to do next.**
 
-> ## Status — 2026-10-18 (session 8)
+> ## Status — 2026-10-27 (session 9)
 >
-> **Released on iOS:** magic-link sign-in, Home, Recordings (list, detail, audio, transcripts),
-> Contacts.
+> **Push notifications — app side built on `feat/push`, NOT usable yet.** Three things block it,
+> in this order (all in `docs/prompts/BACKEND-PUSH.md`):
+> 1. **Accounts:** QStash + Expo token into PRM's Vercel env (QStash reused from the CRM);
+>    Firebase Android app → `google-services.json` + `app.json` line; FCM and APNs keys via
+>    `eas credentials`.
+> 2. **Backend:** run the prompt in `ninja_prm`.
+> 3. **New native builds** — `expo-notifications`/`expo-device` are native; Metro reload won't do.
+> Spec and device checklist: [FEAT-05](docs/features/FEAT-05-PUSH.md).
 >
-> **Built, never on a device:**
-> - **Tasks** (session 7, branch `feat/tasks`) — [FEAT-03](docs/features/FEAT-03-TASKS.md).
-> - **Messages** (this session, branch `feat/messages`, stacked on `feat/tasks`) — two-way CrazyTel
->   SMS: inbox with filters and line chips, threads with optimistic send + idempotent retry,
->   new message, save an unknown number as a contact, Text from a contact, unread tab badge.
->   [FEAT-04](docs/features/FEAT-04-MESSAGES.md). 🚨 **Built against a backend that doesn't exist
->   yet** — every Messages screen errors until `docs/prompts/BACKEND-SMS-API.md` ships.
+> Earlier work, still to device-test: **Tasks** (FEAT-03) and **Messages** (FEAT-04) — merged to
+> `feat/messages` and pushed; the SMS backend is live.
 >
 > **Navigation changed (the user's call):** tabs are now Home · **Messages** · Recordings ·
 > Contacts · Tasks (Messages moved to second on 2026-10-20). Settings left the bar and is a **gear top-right on Home**, replacing the theme

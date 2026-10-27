@@ -153,6 +153,46 @@ async function render(mark, { name, widthPct, opaque }) {
   );
 }
 
+/**
+ * Android's status-bar notification icon.
+ *
+ * Android draws it from the ALPHA channel only — every opaque pixel becomes
+ * white — so a full-colour app icon shows up as a solid white square. This is
+ * the white mark on transparent, cropped tight: at 24dp a mark that fills only
+ * half the canvas (like the splash's) is unreadable. Not circle-masked, so no
+ * diagonal check. 96px = the xxxhdpi size; the expo-notifications plugin
+ * scales it for the other densities.
+ */
+async function renderNotificationIcon(mark, name) {
+  const NOTIF = 96;
+  const meta = await sharp(mark).metadata();
+  const markW = Math.round(NOTIF * 0.88);
+  const markH = Math.round((meta.height / meta.width) * markW);
+  const out = path.join(OUT, name);
+  await sharp({
+    create: { width: NOTIF, height: NOTIF, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([
+      {
+        input: await sharp(mark).resize({ width: markW, height: markH, kernel: "lanczos3" }).toBuffer(),
+        gravity: "center",
+      },
+    ])
+    .png({ compressionLevel: 9 })
+    .toFile(out);
+  console.log(
+    `${name.padEnd(20)} ${NOTIF}x${NOTIF}  mark ${markW}x${markH}  ${(fs.statSync(out).size / 1024).toFixed(1)}KB`,
+  );
+}
+
+/**
+ * No arguments renders everything. Pass file names to render only those —
+ * `node scripts/generate-icons.mjs notification-icon.png` — so adding one asset
+ * doesn't re-encode (and churn) the ones already shipped.
+ */
+const only = new Set(process.argv.slice(2));
+const want = (name) => only.size === 0 || only.has(name);
+
 const mark = await extractMark();
 const markMeta = await sharp(mark).metadata();
 console.log(`mark extracted ${markMeta.width}x${markMeta.height} from icon.png\n`);
@@ -160,7 +200,16 @@ console.log(`mark extracted ${markMeta.width}x${markMeta.height} from icon.png\n
 // icon.png is both the input and an output: the mark is re-laid onto a
 // 1024 canvas in the exact brand orange. Writing it last would be fine too,
 // but extractMark() has already read the file into memory by now either way.
-await render(mark, { name: "icon.png", widthPct: ICON_PCT, opaque: true });
-await render(mark, { name: "splash-icon.png", widthPct: MASKED_PCT, opaque: false });
-await render(mark, { name: "adaptive-icon.png", widthPct: MASKED_PCT, opaque: false });
+if (want("icon.png")) {
+  await render(mark, { name: "icon.png", widthPct: ICON_PCT, opaque: true });
+}
+if (want("splash-icon.png")) {
+  await render(mark, { name: "splash-icon.png", widthPct: MASKED_PCT, opaque: false });
+}
+if (want("adaptive-icon.png")) {
+  await render(mark, { name: "adaptive-icon.png", widthPct: MASKED_PCT, opaque: false });
+}
+if (want("notification-icon.png")) {
+  await renderNotificationIcon(mark, "notification-icon.png");
+}
 console.log("\nDone. Native change — rebuild with `eas build` to see it on device.");

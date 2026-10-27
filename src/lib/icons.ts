@@ -79,7 +79,8 @@ export { default as ListTodo } from "lucide-react-native/icons/list-todo";
 export { default as Pencil } from "lucide-react-native/icons/pencil";
 export { default as Repeat } from "lucide-react-native/icons/repeat";
 
-/* messages */
+/* messages + notifications */
+export { default as BellRing } from "lucide-react-native/icons/bell-ring";
 export { default as CheckCheck } from "lucide-react-native/icons/check-check";
 export { default as CircleAlert } from "lucide-react-native/icons/circle-alert";
 export { default as MessagesSquare } from "lucide-react-native/icons/messages-square";

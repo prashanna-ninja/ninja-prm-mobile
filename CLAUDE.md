@@ -33,8 +33,9 @@ When the two disagree about *how to build it*, `ninja-crm-mobile` wins. When the
    (2026-09-28), Tasks (2026-09-29) or Messages (2026-10-18) was in the original v1 scope —
    each was added at the user's request, and Messages took Settings' tab slot. **Five tabs is
    the ceiling**; anything more needs a different navigation shape. Nothing else gets built
-   without being asked — the scope has widened four times, every time explicitly. See
-   `docs/features/FEAT-01-RECORDINGS.md` through `FEAT-04-MESSAGES.md`.
+   without being asked — the scope has widened five times, every time explicitly (the fifth,
+   2026-10-27, is **push notifications** — texts and a morning tasks summary, not a tab). See
+   `docs/features/FEAT-01-RECORDINGS.md` through `FEAT-05-PUSH.md`.
 2. **Primary colour is `#ff8900`.** Everything else in the palette comes from the PRM web app
    (`ref/prm/src/app/globals.css`). The web app's blue primary is the *only* token we deliberately
    replace. See `docs/03-DESIGN-SYSTEM.md`.
@@ -94,6 +95,7 @@ diagonal must fit Android's circular mask, and the iOS icon must be opaque.
 | Forms | React Hook Form + Zod |
 | Auth | Better Auth + `@better-auth/expo` + `expo-secure-store` |
 | Audio | `expo-audio` |
+| Push | `expo-notifications` + Expo push service; backend queues through Upstash QStash (FEAT-05) |
 
 ---
 

@@ -315,3 +315,18 @@ on every request just to return one row as `thread`. The app polls that route, s
 rations it (focused only, 15s live / 60s quiet — FEAT-04 §2), which cuts the load but not the
 per-request cost. **Proper fix:** build that one thread's row with a query scoped to its own
 conversations instead of `getSmsThreads().find()`.
+
+---
+
+## 12. Push notifications — not started
+
+> **Status 2026-10-27: prompt written, nothing built.**
+> [../prompts/BACKEND-PUSH.md](../prompts/BACKEND-PUSH.md) — the prompt, plus the account / env
+> setup (QStash and the APNs key reused from Ninja CRM; Firebase Android app, FCM key and EAS
+> credentials new for PRM).
+
+A port of Ninja CRM's push pipeline (outbox table → QStash → worker route → Expo → receipts).
+The one structural change: the PRM has no Notification table, so `push_delivery` carries its own
+title/body/data. Two producers: an incoming text (hooked into `recordSmsMessage`, the choke point
+both the webhook and the sync use, only for texts under 10 minutes old so a history import can't
+spray the phone) and an 8am tasks summary from the existing hourly cron.
