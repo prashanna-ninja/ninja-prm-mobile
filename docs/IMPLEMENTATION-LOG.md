@@ -629,3 +629,20 @@ Next session starts at **Phase 0** (backend) or **Phase 1** (scaffold), dependin
 question 1. Phases 1–3 don't depend on Phase 0 and can run in parallel with it, so if the backend
 answer is slow to arrive, scaffolding is not blocked. See
 [implementation/IMPLEMENTATION-PLAN.md](implementation/IMPLEMENTATION-PLAN.md).
+
+---
+
+## 2026-10-28 — Contact tags shown everywhere a contact is listed
+
+Push confirmed working on Android by the user (iOS not yet checked).
+
+Tags were already in the API (`tags: {id,name,color}[]` on the contacts list and on GET [id])
+and in our types, but never rendered. New `components/contacts/tag-badges.tsx`, a port of the
+web's `components/tags/tag-badges.tsx`: tinted fill `${color}18`, border `${color}40`, text and
+dot in the tag colour. Alpha goes on the literal hex (RN accepts #RRGGBBAA), not a themed token.
+Non-6-digit-hex colours fall back to grey. Lists show 3 then "+N"; the contact detail shows all.
+
+Wired into: contacts list row, New message contact results, Task contact picker, Messages "Save
+to contact" sheet, contact detail header. **Not** on message thread rows/headers: the SMS thread
+payload's `contact` is `{id,name,image}` only — showing tags there needs a backend change.
+Typecheck clean.

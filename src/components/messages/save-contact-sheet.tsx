@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useInfiniteContacts } from "@/api/contacts.api";
+import { TagBadges } from "@/components/contacts/tag-badges";
 import { useLinkSmsThread } from "@/api/sms.api";
 import { ContactAvatar } from "@/components/contacts/contact-avatar";
 import { SearchBar } from "@/components/ui/search-bar";
@@ -222,7 +223,7 @@ export function SaveContactSheet({
                   className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-2.5 active:opacity-70"
                 >
                   <ContactAvatar name={item.name} image={item.image} size={36} />
-                  <View className="min-w-0 flex-1">
+                  <View className="min-w-0 flex-1 gap-0.5">
                     <Text
                       numberOfLines={1}
                       className="font-sans-medium text-[15px] text-card-foreground"
@@ -234,6 +235,7 @@ export function SaveContactSheet({
                         {item.email}
                       </Text>
                     ) : null}
+                    <TagBadges tags={item.tags} />
                   </View>
                   {link.isPending && link.variables && "contactId" in link.variables &&
                   link.variables.contactId === item.id ? (

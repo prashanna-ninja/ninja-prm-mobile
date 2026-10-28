@@ -12,6 +12,7 @@ import {
 
 import { AppHeader } from "@/components/app-header";
 import { ContactAvatar } from "@/components/contacts/contact-avatar";
+import { TagBadges } from "@/components/contacts/tag-badges";
 import { Screen } from "@/components/screen";
 import { describeError } from "@/components/ui/states";
 import { useInfiniteContacts } from "@/api/contacts.api";
@@ -173,7 +174,7 @@ export default function NewMessageScreen() {
               className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-2.5 active:opacity-70"
             >
               <ContactAvatar name={item.contact.name} image={item.contact.image} size={36} />
-              <View className="min-w-0 flex-1">
+              <View className="min-w-0 flex-1 gap-0.5">
                 <Text
                   numberOfLines={1}
                   className="font-sans-medium text-[15px] text-card-foreground"
@@ -183,6 +184,7 @@ export default function NewMessageScreen() {
                 <Text numberOfLines={1} className="font-sans text-xs text-muted-foreground">
                   {item.phone}
                 </Text>
+                <TagBadges tags={item.contact.tags} />
               </View>
               <ChevronRight size={16} color="#A1A1AA" strokeWidth={2} />
             </Pressable>

@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { ContactAvatar } from "@/components/contacts/contact-avatar";
 import { RelationshipBadge } from "@/components/contacts/relationship-badge";
+import { TagBadges } from "@/components/contacts/tag-badges";
 import { Building } from "@/lib/icons";
 import type { ContactListItem } from "@/types/contact.types";
 
@@ -58,6 +59,8 @@ export function ContactRow({ contact }: { contact: ContactListItem }) {
             {subtitle}
           </Text>
         ) : null}
+
+        <TagBadges tags={contact.tags} />
 
         {contact.company?.name || activity ? (
           <View className="flex-row items-center gap-2">

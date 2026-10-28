@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useInfiniteContacts } from "@/api/contacts.api";
+import { TagBadges } from "@/components/contacts/tag-badges";
 import { ContactAvatar } from "@/components/contacts/contact-avatar";
 import { SearchBar } from "@/components/ui/search-bar";
 import { ErrorState } from "@/components/ui/states";
@@ -144,7 +145,7 @@ export function ContactPickerSheet({
                     }`}
                   >
                     <ContactAvatar name={item.name} image={item.image} size={36} />
-                    <View className="min-w-0 flex-1">
+                    <View className="min-w-0 flex-1 gap-0.5">
                       <Text
                         numberOfLines={1}
                         className="font-sans-medium text-[15px] text-card-foreground"
@@ -159,6 +160,7 @@ export function ContactPickerSheet({
                           {item.email || item.phone}
                         </Text>
                       ) : null}
+                      <TagBadges tags={item.tags} />
                     </View>
                     <View
                       className={`h-6 w-6 items-center justify-center rounded-full border ${

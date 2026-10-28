@@ -15,6 +15,7 @@ import { ContactAvatar } from "@/components/contacts/contact-avatar";
 import { ContactOverview } from "@/components/contacts/contact-overview";
 import { LogInteractionSheet } from "@/components/contacts/log-interaction-sheet";
 import { RelationshipBadge } from "@/components/contacts/relationship-badge";
+import { TagBadges } from "@/components/contacts/tag-badges";
 import { Screen } from "@/components/screen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState, describeError } from "@/components/ui/states";
@@ -162,6 +163,7 @@ export default function ContactDetailScreen() {
               <ContactAvatar name={data.name} image={data.image} size={56} />
               <View className="min-w-0 flex-1 gap-1.5">
                 <RelationshipBadge type={data.relationshipType} />
+                <TagBadges tags={data.tags} max={Infinity} size="md" />
                 {data.archived ? (
                   <Text className="font-sans text-xs text-muted-foreground">
                     Archived
