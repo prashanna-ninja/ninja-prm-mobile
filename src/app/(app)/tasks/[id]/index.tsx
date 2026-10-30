@@ -19,6 +19,7 @@ import { TaskCheck } from "@/components/tasks/task-check";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState, describeError } from "@/components/ui/states";
 import { useDeleteTask, useSetTaskStatus, useTask } from "@/api/tasks.api";
+import { usePullRefresh } from "@/hooks/use-pull-refresh";
 import { formatDateTime } from "@/lib/format";
 import {
   ArrowLeft,
@@ -43,6 +44,7 @@ export default function TaskDetailScreen() {
   }>();
 
   const query = useTask(id);
+  const pull = usePullRefresh(() => query.refetch());
   const setStatus = useSetTaskStatus();
   const remove = useDeleteTask();
 
@@ -91,8 +93,8 @@ export default function TaskDetailScreen() {
         contentContainerClassName="px-4 pb-10 gap-6"
         refreshControl={
           <RefreshControl
-            refreshing={query.isRefetching}
-            onRefresh={() => void query.refetch()}
+            refreshing={pull.refreshing}
+            onRefresh={pull.onRefresh}
             tintColor="#FF8900"
             colors={["#FF8900"]}
           />

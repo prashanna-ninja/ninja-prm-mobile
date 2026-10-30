@@ -19,6 +19,7 @@ import { RecordingRowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState, describeError } from "@/components/ui/states";
 import { useInfiniteTasks, useSetTaskStatus } from "@/api/tasks.api";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { usePullRefresh } from "@/hooks/use-pull-refresh";
 import { pluralize } from "@/lib/format";
 import { ListTodo, Plus } from "@/lib/icons";
 import { dueGroup, type DueGroup } from "@/lib/tasks";
@@ -46,6 +47,7 @@ export default function TasksScreen() {
     sortBy: isOpen ? "dueAt" : "updatedAt",
     sortOrder: isOpen ? "asc" : "desc",
   });
+  const pull = usePullRefresh(() => query.refetch());
 
   const setStatus = useSetTaskStatus();
   const onToggle = (id: string, status: TaskStatus) => {
@@ -152,8 +154,8 @@ export default function TasksScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              refreshing={query.isRefetching && !query.isFetchingNextPage}
-              onRefresh={() => void query.refetch()}
+              refreshing={pull.refreshing}
+              onRefresh={pull.onRefresh}
               tintColor="#FF8900"
               colors={["#FF8900"]}
             />

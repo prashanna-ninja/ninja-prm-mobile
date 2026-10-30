@@ -1,8 +1,10 @@
+import { useQueryClient } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
 import * as React from "react";
 
 import { useSmsUnreadTotal } from "@/api/sms.api";
 import { openPushTarget, parsePushData } from "@/lib/push-links";
+import { qk } from "@/lib/query-keys";
 import { usePush } from "@/providers/push-provider";
 
 /**
@@ -19,16 +21,22 @@ import { usePush } from "@/providers/push-provider";
 export function PushBridge() {
   const { permission } = usePush();
   const unread = useSmsUnreadTotal();
+  const queryClient = useQueryClient();
 
   /* --- Taps while the app is running -------------------------------------- */
 
   React.useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = parsePushData(response.notification.request.content.data);
-      if (data) openPushTarget(data);
+      if (!data) return;
+      // The push was received while backgrounded, when no JS ran — so nothing
+      // refreshed. Do it now, before the screen it opens reads the cache.
+      if (data.type === "sms") void queryClient.invalidateQueries({ queryKey: qk.sms.all() });
+      if (data.type === "tasks_due") void queryClient.invalidateQueries({ queryKey: qk.tasks.all() });
+      openPushTarget(data);
     });
     return () => subscription.remove();
-  }, []);
+  }, [queryClient]);
 
   /* --- The tap that launched the app -------------------------------------- */
 

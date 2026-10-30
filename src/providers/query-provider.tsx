@@ -1,6 +1,7 @@
-import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { addNetworkStateListener } from "expo-network";
 import * as React from "react";
+import { AppState } from "react-native";
 
 import { queryClient } from "@/lib/query-client";
 
@@ -23,8 +24,29 @@ function useOnlineManager() {
   }, []);
 }
 
+/**
+ * Tell TanStack Query when the app comes back to the foreground.
+ *
+ * Query's "window focus" is a browser event; on native it never fires, so
+ * coming back to the app refreshed nothing — a text that arrived (and pushed)
+ * while the app was backgrounded stayed missing until the next poll. Mapping
+ * AppState onto focus makes every mounted, stale query refetch silently on
+ * return. SMS queries are always stale (staleTime 0), so Messages always does.
+ */
+function useAppFocusManager() {
+  React.useEffect(() => {
+    focusManager.setEventListener((handleFocus) => {
+      const subscription = AppState.addEventListener("change", (state) =>
+        handleFocus(state === "active"),
+      );
+      return () => subscription.remove();
+    });
+  }, []);
+}
+
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   useOnlineManager();
+  useAppFocusManager();
 
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

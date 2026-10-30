@@ -646,3 +646,30 @@ Wired into: contacts list row, New message contact results, Task contact picker,
 to contact" sheet, contact detail header. **Not** on message thread rows/headers: the SMS thread
 payload's `contact` is `{id,name,image}` only — showing tags there needs a backend change.
 Typecheck clean.
+
+---
+
+## 2026-10-30 — Messages freshness: refetch on return, push-tap refresh, silent refreshes
+
+Client report: "polling is slow — even after a push arrives you have to refresh."
+
+Cause: TanStack Query's `refetchOnWindowFocus` was off ("not meaningful on native") and nothing
+mapped AppState onto Query's focus, so **returning to the app refreshed nothing**. A push received
+while backgrounded runs no JS, so the text stayed missing until the next poll — and the inbox
+wasn't polled at all. Separately, every `RefreshControl` was bound to `isRefetching`, so any
+background refetch showed the pull spinner.
+
+- `providers/query-provider.tsx`: `focusManager` ← AppState; `query-client.ts`
+  `refetchOnWindowFocus: true` (refetches only mounted + stale queries).
+- `api/sms.api.ts`: threads / unread / messages `staleTime: 0` (always refetch on return); open
+  thread live poll 15s → **10s** (quiet stays 60s); inbox now polls **30s while focused** and the
+  app is active (new `focused` arg, from `useIsFocused` in messages/index).
+- `push-bridge.tsx`: tapping a push invalidates `qk.sms.all()` / `qk.tasks.all()` before opening
+  the target. (A push received while the app is OPEN already invalidated — push-provider.)
+- New `hooks/use-pull-refresh.ts`: the spinner shows only for a user pull. Applied to Home,
+  Messages, Recordings, Contacts list + detail, Tasks list + detail.
+
+Decided against: background fetch / silent pushes (iOS throttles them and skips force-quit apps,
+and our cache is memory-only), websockets (Vercel can't hold them). Backend follow-up, optional:
+make GET threads/[id]/messages look up only its own row instead of `getSmsThreads()` and add a
+`since` parameter — then the thread poll can drop to 5s cheaply. Typecheck clean; not yet on device.

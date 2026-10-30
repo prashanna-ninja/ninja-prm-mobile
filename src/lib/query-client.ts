@@ -16,7 +16,9 @@ export const queryClient = new QueryClient({
       },
       staleTime: 30_000, // 30s — don't refetch on every remount
       gcTime: 5 * 60_000, // keep unmounted data 5 min for instant back-nav
-      refetchOnWindowFocus: false, // not meaningful on native
+      // "Focus" = the app returning to the foreground (query-provider maps
+      // AppState onto it). Refetches only what's mounted and stale.
+      refetchOnWindowFocus: true,
       refetchOnReconnect: true,
     },
     mutations: { retry: 0 },

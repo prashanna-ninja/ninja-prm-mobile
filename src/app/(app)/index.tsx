@@ -9,6 +9,7 @@ import { Screen } from "@/components/screen";
 import { RecordingRowSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { useRecordings, useRecordingStats } from "@/api/recordings.api";
+import { usePullRefresh } from "@/hooks/use-pull-refresh";
 import { ChevronRight, Library, Settings } from "@/lib/icons";
 import { percentChange, pluralize } from "@/lib/format";
 import { useSession } from "@/providers/session-provider";
@@ -26,10 +27,9 @@ export default function HomeScreen() {
   const stats = useRecordingStats();
   const recent = useRecordings({ pageSize: RECENT_COUNT });
 
-  const refreshing = stats.isRefetching || recent.isRefetching;
-  const onRefresh = () => {
-    void Promise.all([stats.refetch(), recent.refetch()]);
-  };
+  const { refreshing, onRefresh } = usePullRefresh(() =>
+    Promise.all([stats.refetch(), recent.refetch()]),
+  );
 
   const firstName = session?.user?.name?.trim().split(/\s+/)[0];
   const isEmpty =

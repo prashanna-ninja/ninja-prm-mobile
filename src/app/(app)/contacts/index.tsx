@@ -18,6 +18,7 @@ import { RecordingRowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { useInfiniteContacts } from "@/api/contacts.api";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { usePullRefresh } from "@/hooks/use-pull-refresh";
 import { pluralize } from "@/lib/format";
 import { Plus, Users } from "@/lib/icons";
 import type { RelationshipType } from "@/types/contact.types";
@@ -33,6 +34,7 @@ export default function ContactsScreen() {
     search: debouncedSearch,
     relationshipType: type ?? undefined,
   });
+  const pull = usePullRefresh(() => query.refetch());
 
   const items = React.useMemo(
     () => query.data?.pages.flatMap((p) => p.contacts) ?? [],
@@ -90,8 +92,8 @@ export default function ContactsScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              refreshing={query.isRefetching && !query.isFetchingNextPage}
-              onRefresh={() => void query.refetch()}
+              refreshing={pull.refreshing}
+              onRefresh={pull.onRefresh}
               tintColor="#FF8900"
               colors={["#FF8900"]}
             />

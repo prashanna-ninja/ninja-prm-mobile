@@ -18,6 +18,7 @@ import { RecordingRowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { useInfiniteRecordings } from "@/api/recordings.api";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { usePullRefresh } from "@/hooks/use-pull-refresh";
 import { ArrowUpDown, Library } from "@/lib/icons";
 import { pluralize } from "@/lib/format";
 import {
@@ -53,6 +54,7 @@ export default function RecordingsScreen() {
     sortBy: "date",
     sortOrder,
   });
+  const pull = usePullRefresh(() => query.refetch());
 
   const items = React.useMemo(
     () => query.data?.pages.flatMap((p) => p.items) ?? [],
@@ -125,8 +127,8 @@ export default function RecordingsScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              refreshing={query.isRefetching && !query.isFetchingNextPage}
-              onRefresh={() => void query.refetch()}
+              refreshing={pull.refreshing}
+              onRefresh={pull.onRefresh}
               tintColor="#FF8900"
               colors={["#FF8900"]}
             />

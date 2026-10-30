@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import * as React from "react";
 import {
   ActivityIndicator,
@@ -25,6 +25,7 @@ import {
   useSyncSmsHistory,
 } from "@/api/sms.api";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { usePullRefresh } from "@/hooks/use-pull-refresh";
 import { MessagesSquare, Plus, RefreshCw } from "@/lib/icons";
 import type { SmsFilter } from "@/types/sms.types";
 
@@ -39,16 +40,18 @@ export default function MessagesScreen() {
   const [lineKey, setLineKey] = React.useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(search);
 
+  const focused = useIsFocused();
   const query = useInfiniteSmsThreads(
     { search: debouncedSearch, filter, lineKey: lineKey ?? undefined },
     configured,
+    focused,
   );
   const check = useCheckForNewTexts();
   const sync = useSyncSmsHistory();
 
-  // The inbox isn't polled (see sms.api.ts), so re-read it whenever you come
-  // back to it — from a thread, or from another tab. Skip the first focus:
-  // the query is already loading then.
+  // Re-read whenever you come back to it — from a thread, or from another tab
+  // (tabs stay mounted, so app-foreground refetching doesn't cover this).
+  // Skip the first focus: the query is already loading then.
   const focusedOnce = React.useRef(false);
   useFocusEffect(
     React.useCallback(() => {
@@ -65,10 +68,12 @@ export default function MessagesScreen() {
   const first = query.data?.pages[0];
   const hasFilters = debouncedSearch.trim().length >= 2 || filter !== "all" || lineKey !== null;
 
-  const onRefresh = () => {
-    // CrazyTel's cheap change check, then a re-read (check invalidates on settle).
-    check.mutate(undefined, { onError: () => void query.refetch() });
-  };
+  // A pull also asks CrazyTel's cheap change check, then re-reads. The check
+  // invalidates on settle; `cancelRefetch: false` joins that refetch.
+  const pull = usePullRefresh(async () => {
+    await check.mutateAsync().catch(() => {});
+    await query.refetch({ cancelRefetch: false });
+  });
 
   const onSync = () => {
     sync.mutate(undefined, {
@@ -183,8 +188,8 @@ export default function MessagesScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              refreshing={check.isPending || (query.isRefetching && !query.isFetchingNextPage)}
-              onRefresh={onRefresh}
+              refreshing={pull.refreshing}
+              onRefresh={pull.onRefresh}
               tintColor="#FF8900"
               colors={["#FF8900"]}
             />

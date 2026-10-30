@@ -30,6 +30,7 @@ import {
   useContactRecordings,
 } from "@/api/interactions.api";
 import { useSmsSetup, useStartSmsThread } from "@/api/sms.api";
+import { usePullRefresh } from "@/hooks/use-pull-refresh";
 import { formatDateCompact } from "@/lib/format";
 import {
   Archive,
@@ -54,6 +55,7 @@ export default function ContactDetailScreen() {
   const { id = "" } = useLocalSearchParams<{ id?: string }>();
 
   const query = useContact(id);
+  const pull = usePullRefresh(() => query.refetch());
   const recordings = useContactRecordings(id);
   const archive = useArchiveContact();
   const smsSetup = useSmsSetup();
@@ -122,8 +124,8 @@ export default function ContactDetailScreen() {
         contentContainerClassName="px-4 pb-10 gap-6"
         refreshControl={
           <RefreshControl
-            refreshing={query.isRefetching}
-            onRefresh={() => void query.refetch()}
+            refreshing={pull.refreshing}
+            onRefresh={pull.onRefresh}
             tintColor="#FF8900"
             colors={["#FF8900"]}
           />

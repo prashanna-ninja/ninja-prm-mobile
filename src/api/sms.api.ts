@@ -26,13 +26,22 @@ import type {
  * only on the phone — and its retry must reuse the clientRequestId, which the
  * route forwards to CrazyTel as the Idempotency-Key.
  *
- * There is no websocket and no push: incoming texts reach the server by
- * CrazyTel webhook, and the app learns about them by re-reading. Same cadence
- * as the web (`messages-page-client.tsx`): an open thread every 15s, and
- * `POST /sms/check` — CrazyTel's own change check — only on demand.
+ * There is no websocket. Incoming texts reach the server by CrazyTel webhook,
+ * and the app learns about them three ways, fastest first:
+ *
+ * 1. **A push** while the app is open invalidates `qk.sms.all()`
+ *    (push-provider), as does tapping one (push-bridge).
+ * 2. **Returning to the app** refetches — SMS queries are `staleTime: 0`, and
+ *    query-provider maps AppState onto Query's focus.
+ * 3. **Polling**, the backstop: an open thread every 10s while live, the inbox
+ *    every 30s while it's on screen.
+ *
+ * None of these show a spinner — only a pull does (`usePullRefresh`).
+ * `POST /sms/check` — CrazyTel's own change check — only on a pull.
  */
-export const SMS_POLL_MS = 15_000;
+export const SMS_POLL_MS = 10_000;
 const UNREAD_POLL_MS = 60_000;
+const INBOX_POLL_MS = 30_000;
 
 /** threadIds contain a colon ("contact:abc") — always encode in a path. */
 const threadPath = (threadId: string) =>
@@ -61,13 +70,17 @@ function buildQuery(params: SmsThreadListParams) {
 }
 
 /**
- * The inbox. Deliberately NOT polled — refetching an infinite query refetches
- * every loaded page. It refreshes on pull, on focus, and after any write.
+ * The inbox. Polled slowly, and only while it's on screen (`focused`) with the
+ * app in the foreground — refetching an infinite query refetches every loaded
+ * page, so scrolling deep makes each poll heavier. Also refreshes on focus,
+ * on return to the app, on a push, and after any write.
  */
 export function useInfiniteSmsThreads(
   params: Omit<SmsThreadListParams, "page">,
   enabled = true,
+  focused = false,
 ) {
+  const active = useAppActive();
   return useInfiniteQuery({
     queryKey: qk.sms.threads(params),
     initialPageParam: 1,
@@ -79,6 +92,8 @@ export function useInfiniteSmsThreads(
       last.page < last.totalPages ? last.page + 1 : undefined,
     placeholderData: (prev) => prev,
     enabled,
+    staleTime: 0,
+    refetchInterval: active && focused ? INBOX_POLL_MS : false,
   });
 }
 
@@ -95,6 +110,7 @@ export function useSmsUnreadTotal() {
       apiFetch<SmsThreadListResponse>("/api/v1/sms/threads?page=1&pageSize=1"),
     select: (data) => data.unreadTotal,
     enabled: setup.data?.configured === true,
+    staleTime: 0,
     refetchInterval: active ? UNREAD_POLL_MS : false,
   });
 }
@@ -113,10 +129,9 @@ const IDLE_POLL_MS = 60_000;
  *
  * - **Only while the screen is focused** (`focused`) and the app is in the
  *   foreground. A thread left open under a pushed contact screen stops.
- * - **15s while the conversation is live** (a text in the last 2 minutes, either
- *   way — a send lands here too, via invalidation), **60s once it's quiet.** A
- *   reply mid-conversation still shows within 15s; a thread you're just
- *   reading costs a quarter as much.
+ * - **10s while the conversation is live** (a text in the last 2 minutes, either
+ *   way — a send lands here too, via invalidation), **60s once it's quiet.**
+ *   Polling is the backstop; a push or returning to the app refetches at once.
  *
  * The real fix is server-side: look up only this thread's row. See
  * docs/implementation/BACKEND-CHANGES.md §11.
@@ -128,6 +143,7 @@ export function useSmsThreadMessages(threadId: string, focused: boolean) {
     queryFn: () =>
       apiFetch<SmsThreadMessagesResponse>(`${threadPath(threadId)}/messages`),
     enabled: !!threadId,
+    staleTime: 0,
     refetchInterval: (query) => {
       if (!active || !focused) return false;
       const latest = query.state.data?.messages.at(-1)?.createdAt;
