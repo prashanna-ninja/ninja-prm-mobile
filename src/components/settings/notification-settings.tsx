@@ -116,7 +116,10 @@ export function NotificationSettings() {
             ))
           : null}
 
-        {on ? (
+        {/* Always shown, unlike the categories: picking and previewing a
+            sound needs no push. While push is off (or on a simulator) the
+            choice is saved locally and sent with the next register. */}
+        {push.permission !== "loading" ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Notification sound"

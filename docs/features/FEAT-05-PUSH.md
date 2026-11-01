@@ -64,7 +64,7 @@ texts), Android channel importance **HIGH** (heads-up banners for texts), and a 
 
 ## 3b. Notification sound (added 2026-11-01)
 
-One sound per device, used for every push. Settings → Notifications → **Sound** opens a sheet:
+One sound per device, used for every push. Settings → Notifications → **Sound** (always visible, even with push off or on a simulator; the choice is saved locally and sent on the next register) opens a sheet:
 "Phone default", then **Classic** (9) and **Star Wars** (7). Tapping one plays a preview
 (`expo-audio`, heard even with the silent switch on) and saves it; the tick moves only once the
 server has it, and a failure restores the previous sound.
