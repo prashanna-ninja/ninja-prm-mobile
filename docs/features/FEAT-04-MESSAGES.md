@@ -42,8 +42,10 @@ polled every 60s while the app is foregrounded, off when SMS isn't set up).
   more than one (the web's "All my numbers" dropdown). Tapping the active line clears it.
 - Rows: avatar (contact, or a plain person glyph for unknown numbers), name or number, time,
   "You: …" preview, unread count, and the line(s) used — the web's grey footer.
-- **Not polled** (an infinite query refetches every page). Re-read on focus, on pull-to-refresh
-  (which first runs `POST /sms/check`, CrazyTel's cheap change check), and after any write.
+- **Polled every 30s, only while on screen** and the app is foregrounded (since 2026-10-30 — an
+  infinite query refetches every loaded page, so it's slow). Also re-read on tab focus, on return
+  to the app, on a push, on pull-to-refresh (which first runs `POST /sms/check`, CrazyTel's cheap
+  change check), and after any write. Only a pull shows the spinner (`usePullRefresh`).
 - ⟳ runs the heavy `POST /sms/sync` — only on tap.
 - `configured:false` → "SMS isn't set up — connect CrazyTel on the web". Connection setup is
   web-only by design.
@@ -63,9 +65,11 @@ polled every 60s while the app is foregrounded, off when SMS isn't set up).
   **same `clientRequestId`**, so CrazyTel can't send it twice.
 - **Polling is rationed**, because every poll is expensive server-side: the messages route loads
   the user's whole inbox to fill in `thread`, and there's no messages-only endpoint. So: only
-  while the thread screen is **focused** and the app foregrounded; **15s while the conversation
+  while the thread screen is **focused** and the app foregrounded; **10s while the conversation
   is live** (a text either way in the last 2 minutes — a send counts, via invalidation), **60s once
-  it's quiet**; and an immediate re-read when you come back to it. Marked read on open, and again
+  it's quiet**; and an immediate re-read when you come back to it, return to the app, or a push
+  arrives / is tapped. Every poll re-downloads the whole thread (≤1,000 rows) — the fix is the
+  `/feed` endpoint, see §6. Marked read on open, and again
   whenever a new text lands while you're looking.
 - Composer: multiline input, **From <line>** chip (opens a picker when there's more than one line),
   and a live length / segment / Unicode counter (`lib/sms-segments.ts`, copied from Ninja CRM
@@ -100,7 +104,7 @@ SMS is set up — it opens (or creates) the thread with `fromContact`, so Back r
 | `useSmsSetup` | `GET /api/v1/sms/setup` (staleTime 5 min) |
 | `useInfiniteSmsThreads` | `GET /api/v1/sms/threads?search&filter&lineKey&page&pageSize` |
 | `useSmsUnreadTotal` | same, `pageSize=1`, reads `unreadTotal` |
-| `useSmsThreadMessages` | `GET /api/v1/sms/threads/:threadId/messages` — polled 15s live / 60s quiet, focused only |
+| `useSmsThreadMessages` | `GET /api/v1/sms/threads/:threadId/messages` — polled 10s live / 60s quiet, focused only; `staleTime: 0` |
 | `useMarkSmsThreadRead` | `POST /api/v1/sms/threads/:threadId/read` |
 | `useSendSms` | `POST /api/v1/sms/send` |
 | `useStartSmsThread` | `POST /api/v1/sms/threads` |
@@ -146,3 +150,8 @@ would only have got more common.
 - **No Texts block on contact detail** (`GET /contacts/:id/sms` is in the prompt but unused) — the
   Text button covers the common case.
 - **No CrazyTel setup** on the phone, by design.
+- **Every thread poll downloads the whole conversation** (measured 2026-10-30: biggest thread
+  157 KB; ~0.45s of every request is the trip to Vercel `iad1`). The backend's
+  `GET /sms/threads/[threadId]/feed` (latest page / older page / changes-only) is built on
+  `ninja_prm` branch `fast-message`, not deployed; the app doesn't use it yet. Prompt:
+  `docs/prompts/BACKEND-SMS-FEED.md`; plan: BACKEND-CHANGES §13.

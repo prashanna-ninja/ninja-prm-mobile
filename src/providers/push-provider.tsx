@@ -10,6 +10,7 @@ import {
   registerPushToken,
   unregisterPushToken,
   updatePushPreferences,
+  updatePushSound,
   type PushSyncResult,
 } from "@/api/push.api";
 import { useAppForeground } from "@/hooks/use-app-foreground";
@@ -19,6 +20,7 @@ import {
   type PushCategory,
   type PushPreferences,
 } from "@/lib/push-categories";
+import { androidChannelFor, findPushSound } from "@/lib/push-sounds";
 import { qk } from "@/lib/query-keys";
 import { useSession } from "@/providers/session-provider";
 
@@ -42,6 +44,8 @@ import { useSession } from "@/providers/session-provider";
 const KEY_ENABLED = "ninjaprm_push_enabled";
 const KEY_PREFERENCES = "ninjaprm_push_preferences";
 const KEY_EXPLAINER_SEEN = "ninjaprm_push_explainer_seen";
+/** The chosen sound id (lib/push-sounds.ts); absent = the phone's default. */
+const KEY_SOUND = "ninjaprm_push_sound";
 /**
  * Who turned push on. SecureStore is per-INSTALL, not per-user, so without this
  * the next person to sign in on the phone inherits the previous one's push —
@@ -71,6 +75,8 @@ type PushContextValue = {
   /** The user's master switch — independent of the OS permission. */
   enabled: boolean;
   preferences: PushPreferences;
+  /** Notification sound id for this device; `null` = the phone's default. */
+  sound: string | null;
   token: string | null;
   /** Whether the server accepted the token. */
   sync: PushSyncResult | null;
@@ -86,6 +92,12 @@ type PushContextValue = {
   enable: () => Promise<EnableOutcome>;
   disable: () => Promise<void>;
   setCategory: (category: PushCategory, value: boolean) => Promise<void>;
+  /**
+   * Change the sound. Resolves `ok` once the server has it (or immediately,
+   * saved locally, while push is off: the next register sends it). On a
+   * server failure the previous sound is restored and the result says why.
+   */
+  setSound: (id: string | null) => Promise<PushSyncResult>;
   markExplainerSeen: () => Promise<void>;
   /** Re-read the OS permission — it can change outside the app. */
   refreshPermission: () => Promise<void>;
@@ -115,17 +127,48 @@ Notifications.setNotificationHandler({
 
 /**
  * Android needs an explicit channel, or notifications arrive with no
- * importance — no sound, no heads-up banner. The backend sends to channelId
- * "default", which is this one. iOS ignores it.
+ * importance — no sound, no heads-up banner. iOS ignores channels.
+ *
+ * "default" (the phone's own sound) always exists: it's where the backend
+ * sends for a device with no sound chosen, and for any app build older than
+ * sounds. A chosen sound gets its own channel, `sound_<id>`, because Android
+ * fixes a channel's sound when the channel is created; the backend sends to it
+ * as `channelId` (lib/push-sounds.ts).
  */
-async function ensureAndroidChannel() {
+const CHANNEL_BASE = {
+  importance: Notifications.AndroidImportance.HIGH,
+  lightColor: "#FF8900",
+  vibrationPattern: [0, 250, 250, 250],
+};
+
+async function ensureAndroidChannel(soundId: string | null = null) {
   if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync("default", {
-    name: "Ninja PRM",
-    importance: Notifications.AndroidImportance.HIGH,
-    lightColor: "#FF8900",
-    vibrationPattern: [0, 250, 250, 250],
-  });
+  await Notifications.setNotificationChannelAsync("default", { name: "Ninja PRM", ...CHANNEL_BASE });
+  const sound = findPushSound(soundId);
+  if (sound) {
+    await Notifications.setNotificationChannelAsync(androidChannelFor(sound.id), {
+      name: `Ninja PRM · ${sound.name}`,
+      sound: `${sound.id}.wav`,
+      ...CHANNEL_BASE,
+    });
+  }
+}
+
+/**
+ * Delete every sound channel except the current one, so the phone's
+ * notification settings list one Ninja PRM sound channel, not sixteen. Run
+ * only once the server is sending to the current one: a push addressed to a
+ * deleted channel falls back to a low-importance channel.
+ */
+async function pruneAndroidSoundChannels(keepId: string | null) {
+  if (Platform.OS !== "android") return;
+  const keep = keepId ? androidChannelFor(keepId) : null;
+  const channels = await Notifications.getNotificationChannelsAsync().catch(() => []);
+  await Promise.all(
+    channels
+      .filter((c) => c.id.startsWith("sound_") && c.id !== keep)
+      .map((c) => Notifications.deleteNotificationChannelAsync(c.id).catch(() => {})),
+  );
 }
 
 /**
@@ -180,6 +223,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
   const [permission, setPermission] = React.useState<PushPermission>("loading");
   const [enabled, setEnabled] = React.useState(false);
   const [preferences, setPreferences] = React.useState<PushPreferences>(DEFAULT_PUSH_PREFERENCES);
+  const [sound, setSoundState] = React.useState<string | null>(null);
   const [token, setToken] = React.useState<string | null>(null);
   const [sync, setSync] = React.useState<PushSyncResult | null>(null);
   const [tokenUnavailable, setTokenUnavailable] = React.useState(false);
@@ -198,13 +242,19 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [storedEnabled, storedPrefs, storedSeen] = await Promise.all([
+      const [storedEnabled, storedPrefs, storedSeen, storedSound] = await Promise.all([
         SecureStore.getItemAsync(KEY_ENABLED).catch(() => null),
         SecureStore.getItemAsync(KEY_PREFERENCES).catch(() => null),
         SecureStore.getItemAsync(KEY_EXPLAINER_SEEN).catch(() => null),
+        SecureStore.getItemAsync(KEY_SOUND).catch(() => null),
       ]);
       if (cancelled) return;
 
+      // A stored id this build no longer ships falls back to the default.
+      const loadedSound = findPushSound(storedSound)?.id ?? null;
+      // Set before `enabled`, in the same tick, so the launch register below
+      // sends the stored sound rather than null.
+      setSoundState(loadedSound);
       setEnabled(storedEnabled === "true");
       setExplainerSeen(storedSeen === "true");
       if (storedPrefs) {
@@ -215,7 +265,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      await ensureAndroidChannel();
+      await ensureAndroidChannel(loadedSound);
       const osPermission = await readOsPermission();
       if (!cancelled) setPermission(osPermission);
     })();
@@ -276,14 +326,17 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
         platform: Platform.OS === "ios" ? "ios" : "android",
         deviceName: Device.deviceName ?? null,
         preferences,
+        sound,
       });
       if (!cancelled) setSync(result);
+      // The server now sends to this device's current channel; drop the rest.
+      if (result.status === "ok") await pruneAndroidSoundChannels(sound);
     })();
     return () => {
       cancelled = true;
     };
-    // `preferences` deliberately excluded — a switch change goes through
-    // `setCategory`, which PATCHes instead of re-registering the device.
+    // `preferences` and `sound` deliberately excluded — changes go through
+    // `setCategory` / `setSound`, which PATCH instead of re-registering.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, enabled, permission]);
 
@@ -343,7 +396,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
 
     awaitingPermission.current = false;
     setPermission("granted");
-    await ensureAndroidChannel();
+    await ensureAndroidChannel(sound);
 
     const expoToken = await fetchExpoPushToken();
     if (!expoToken) {
@@ -358,6 +411,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       platform: Platform.OS === "ios" ? "ios" : "android",
       deviceName: Device.deviceName ?? null,
       preferences,
+      sound,
     });
     setSync(result);
 
@@ -368,7 +422,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       userId ? SecureStore.setItemAsync(KEY_OWNER_ID, userId).catch(() => {}) : Promise.resolve(),
     ]);
     return "enabled";
-  }, [preferences, userId]);
+  }, [preferences, sound, userId]);
 
   const disable = React.useCallback(async () => {
     // Local first: the switch responds instantly, and the intent is recorded
@@ -385,6 +439,36 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       if (token && enabled) setSync(await updatePushPreferences(token, next));
     },
     [preferences, persistPreferences, token, enabled],
+  );
+
+  const setSound = React.useCallback(
+    async (next: string | null): Promise<PushSyncResult> => {
+      const id = findPushSound(next)?.id ?? null;
+      const previous = sound;
+      if (id === previous) return { status: "ok" };
+
+      // The new channel must exist BEFORE the server starts addressing it.
+      await ensureAndroidChannel(id);
+      setSoundState(id);
+
+      if (token && enabled) {
+        const result = await updatePushSound(token, id);
+        if (result.status !== "ok") {
+          // The server still sends the old sound: show that, rather than a
+          // choice that isn't in effect. Its channel was never deleted.
+          setSoundState(previous);
+          return result;
+        }
+        await pruneAndroidSoundChannels(id);
+      }
+
+      // Local only after the server agreed (or push is off, when the next
+      // register carries it).
+      if (id) await SecureStore.setItemAsync(KEY_SOUND, id).catch(() => {});
+      else await SecureStore.deleteItemAsync(KEY_SOUND).catch(() => {});
+      return { status: "ok" };
+    },
+    [sound, token, enabled],
   );
 
   const markExplainerSeen = React.useCallback(async () => {
@@ -429,6 +513,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       permission,
       enabled,
       preferences,
+      sound,
       token,
       sync,
       tokenUnavailable,
@@ -436,6 +521,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       enable,
       disable,
       setCategory,
+      setSound,
       markExplainerSeen,
       refreshPermission,
       unregisterForSignOut,
@@ -444,6 +530,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       permission,
       enabled,
       preferences,
+      sound,
       token,
       sync,
       tokenUnavailable,
@@ -451,6 +538,7 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       enable,
       disable,
       setCategory,
+      setSound,
       markExplainerSeen,
       refreshPermission,
       unregisterForSignOut,

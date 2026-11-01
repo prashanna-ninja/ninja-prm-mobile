@@ -1,8 +1,8 @@
 # FEAT-05 — Push notifications
 
-**Status:** app side built 2026-10-27 on `feat/push`. **Backend not built** (prompt:
-[../prompts/BACKEND-PUSH.md](../prompts/BACKEND-PUSH.md)), **accounts not set up** (same file,
-bottom), **needs a new native build**. Typecheck- and bundle-verified only.
+**Status 2026-10-30: live, working on Android** (user-confirmed on a dev build). iOS not yet
+checked on a device. Backend deployed (ninja_prm PR #9); prompt and account setup:
+[../prompts/BACKEND-PUSH.md](../prompts/BACKEND-PUSH.md).
 
 Ported from Ninja CRM, where it's in production. Added at the user's request — the fifth scope
 widening, and the first that isn't a tab.
@@ -62,19 +62,46 @@ Differences from the CRM: our own `useSession()` (never `authClient.useSession()
 tearing), two categories instead of five, no notification centre (so the badge follows unread
 texts), Android channel importance **HIGH** (heads-up banners for texts), and a test button.
 
+## 3b. Notification sound (added 2026-11-01)
+
+One sound per device, used for every push. Settings → Notifications → **Sound** opens a sheet:
+"Phone default", then **Classic** (9) and **Star Wars** (7). Tapping one plays a preview
+(`expo-audio`, heard even with the silent switch on) and saves it; the tick moves only once the
+server has it, and a failure restores the previous sound.
+
+- **Files:** masters in `src/assets/notification-sounds/` (as supplied) → `node
+  scripts/convert-notification-sounds.mjs` → `src/assets/sounds/<id>.wav` (mono 22 kHz 16-bit PCM,
+  1.1 MB total; the script checks iOS's rules — PCM, under 30s — and that its id list matches
+  `src/lib/push-sounds.ts`). `app.json` → `expo-notifications` → `sounds` bundles them.
+- **Contract** (`src/lib/push-sounds.ts` ↔ backend `src/lib/push/sounds.ts`): the backend sends
+  `sound: "<id>.wav"` (iOS) and `channelId: "sound_<id>"` (Android); `null` = `"default"` both.
+  Ids are snake_case because Android raw resources allow `[a-z0-9_]` only.
+- **Android channels:** "default" always exists; the chosen sound's channel is created *before*
+  the PATCH, and other `sound_*` channels are deleted only after the server accepted it (on a
+  sound change, and after each successful register). A push to a deleted channel would land in a
+  low-importance fallback channel.
+- **Storage:** SecureStore `ninjaprm_push_sound`; sent on every register (a reinstall/new token
+  carries it), PATCHed alone on change. Not reset by the ownership guard — it's a device setting.
+- ⚠️ Star Wars sounds are Lucasfilm's: internal builds only. Remove from both lists + app.json
+  before a store build.
+- Needs a **new native build** (sounds are native resources).
+
 ## 4. Done criteria
 
 - [x] Typecheck clean; Android bundle exports (6MB); the plugin writes the icon and colour into the
       Android manifest.
-- [ ] Backend built and deployed (BACKEND-PUSH.md).
-- [ ] Accounts: QStash + Expo token in Vercel; Firebase Android app + `google-services.json`; FCM
-      key and APNs key in EAS.
-- [ ] New dev builds, iOS and Android.
-- [ ] On device: turn on → token registered → "Send a test notification" arrives.
+- [x] Backend built and deployed (BACKEND-PUSH.md).
+- [x] Accounts: QStash + Expo token in Vercel; Firebase Android app + `google-services.json`; FCM
+      key in EAS. (APNs key: unconfirmed until iOS is tested.)
+- [x] New dev build, Android. [ ] iOS.
+- [x] On device (Android): turn on → push arrives. [ ] Same on iOS.
 - [ ] On device: text a CrazyTel number from another phone → push → tap opens that thread.
 - [ ] On device: Texts switch off → no push, text still appears in Messages.
 - [ ] On device: deny the prompt, allow in Settings, come back → push is on.
 - [ ] On device: sign out, sign in as someone else → push is off for them.
+- [ ] Sound (needs backend `push-sound` deployed + new build): pick a sound → test push plays it
+      with the app closed, iOS and Android; back to "Phone default" → default sound; Android
+      system settings show one `Ninja PRM · <name>` channel, not sixteen.
 - [ ] Uninstall, text again → the token is gone from `push_token` within ~15 minutes.
 
 ## 5. Known gaps

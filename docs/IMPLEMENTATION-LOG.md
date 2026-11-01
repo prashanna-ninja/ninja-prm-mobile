@@ -673,3 +673,66 @@ Decided against: background fetch / silent pushes (iOS throttles them and skips 
 and our cache is memory-only), websockets (Vercel can't hold them). Backend follow-up, optional:
 make GET threads/[id]/messages look up only its own row instead of `getSmsThreads()` and add a
 `since` parameter — then the thread poll can drop to 5s cheaply. Typecheck clean; not yet on device.
+
+---
+
+## 2026-11-01 — Session 10 wrap: API timings, feed endpoint planned, loose ends
+
+**Measured production (2026-10-30, signed in, 5 runs each, from the developer's machine):**
+
+| Request | TTFB / total | Size |
+| ------- | ------------ | ---- |
+| Signed-out 401 (no DB work) | ~0.45s | 24 B |
+| `GET /sms/setup` | 0.45–0.85s | 1 KB |
+| `GET /sms/threads?pageSize=1` (badge) | ~0.57s | 0.6 KB |
+| `GET /sms/threads?pageSize=50` (1,406 threads total) | ~0.59s (one 1.67s spike) | 24 KB |
+| `GET …/messages`, small thread | ~0.57s | 0.9 KB |
+| `GET …/messages`, biggest thread | ~1.0s | 157 KB |
+
+`x-vercel-id: bom1::iad1` — requests hop from the nearest edge to functions in **`iad1` (US
+East)**; `vercel.json` sets no region. ~0.45s of every request is that trip; the SMS queries add
+only ~0.1–0.15s at today's data size. **I'd earlier blamed the inbox-building queries — the
+measurement says distance first, payload second (the whole thread on every poll), queries third.**
+Moving functions to Sydney only helps if the database moves too (DB host/region still unknown).
+
+**Feed endpoint:** wrote `docs/prompts/BACKEND-SMS-FEED.md` — a NEW
+`GET /api/v1/sms/threads/[threadId]/feed` (open latest N + thread row / older by `before` /
+changes-only by `updatedAt` with a DB-derived cursor and 5s overlap), leaving `…/messages` as is
+for shipped builds. The backend has since built it on `ninja_prm` branch **`fast-message`**
+(95a9df0, pushed) — **not merged, not deployed, and the app doesn't call it yet.** That's the
+first job next session. BACKEND-CHANGES §13.
+
+**Doc tidy:** FEAT-04 polling numbers (10s / inbox 30s) and a known-gap note for the whole-thread
+download; FEAT-05 and BACKEND-CHANGES §12 marked live on Android; HANDOVER rewritten.
+
+**Found, not touched:** `src/assets/notification-sounds/` (untracked, 2.5 MB — 9 `.wav` "classic"
+and 7 `.m4r` "themed" files, including R2-D2 and lightsaber sounds). Nothing references them.
+If custom notification sounds are wanted: `expo-notifications` plugin `sounds` + an Android
+channel per sound (a channel's sound can't change after creation) + `sound` in the push payload,
+and a new native build. ⚠️ The R2-D2 / lightsaber sounds are Lucasfilm's — don't ship them in a
+store build without a licence.
+
+**Security housekeeping:** a signed-in session cookie was used for the timings; the scratch copies
+were deleted and the user was asked to sign that browser session out.
+
+---
+
+## 2026-11-01 — Session 11: selectable notification sound (FEAT-05 §3b)
+
+User: messages freshness (30b833c) went fine with the client, no complaints. New request: make
+the notification sound selectable (mainly iOS, Android too) from the bundled sounds, with names
+and categories. Decisions: **one sound for all pushes**; **keep the Star Wars sounds** (internal
+builds only).
+
+**Backend** (`docs/prompts/BACKEND-PUSH-SOUND.md`, BACKEND-CHANGES §14): built by the user on
+`ninja_prm` `push-sound`. Reviewed — correct. ⚠️ **`db push` before deploy**: the push code reads
+`pushToken` without a `select`, so code that knows `sound` fails every push/register until the
+column exists. Also noticed `main` already has `fast-message` merged (bd9147c).
+
+**App:** `scripts/convert-notification-sounds.mjs` (ffmpeg → 16 PCM WAVs, 1.1 MB, validated);
+`src/lib/push-sounds.ts` (ids, names, categories); `app.json` `sounds`; push provider gains
+`sound` / `setSound` + per-sound Android channels with ordered create → PATCH → prune;
+`push.api.ts` sends `sound` on register and `updatePushSound`; Settings "Sound" row +
+`notification-sound-sheet.tsx`. Typecheck clean. **Not yet on a device — needs a new native build
+and the backend deployed.** Snake_case asset filenames break the kebab-case rule on purpose
+(Android raw resource names).

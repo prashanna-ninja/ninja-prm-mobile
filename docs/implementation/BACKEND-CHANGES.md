@@ -318,9 +318,14 @@ conversations instead of `getSmsThreads().find()`.
 
 ---
 
-## 12. Push notifications — not started
+## 12. Push notifications — live
 
-> **Status 2026-10-27: prompt written, nothing built.**
+> **Status 2026-10-30: built, deployed, working on Android** (ninja_prm PR #9). iOS not yet
+> checked on a device. Open follow-ups from the backend's own report: no sweep for stranded
+> outbox rows (add `drainPushOutbox()` to the hourly cron), and the tasks push doesn't check
+> subscription access the way the digest email does.
+>
+> Original status 2026-10-27: prompt written, nothing built.
 > [../prompts/BACKEND-PUSH.md](../prompts/BACKEND-PUSH.md) — the prompt, plus the account / env
 > setup (QStash and the APNs key reused from Ninja CRM; Firebase Android app, FCM key and EAS
 > credentials new for PRM).
@@ -330,3 +335,46 @@ The one structural change: the PRM has no Notification table, so `push_delivery`
 title/body/data. Two producers: an incoming text (hooked into `recordSmsMessage`, the choke point
 both the webhook and the sync use, only for texts under 10 minutes old so a history import can't
 spray the phone) and an 8am tasks summary from the existing hourly cron.
+
+---
+
+## 13. SMS thread feed — latest page + changes-only polling (requested 2026-10-30)
+
+**Prompt:** [`docs/prompts/BACKEND-SMS-FEED.md`](../prompts/BACKEND-SMS-FEED.md). **Status 2026-11-01:
+built on `ninja_prm` branch `fast-message` (95a9df0, pushed), NOT merged or deployed.** Before
+deploying: confirm the index went in with `db push` (an index missing only makes it slower, it
+can't break anything) and run the prompt's "Verify" timings against a preview deploy.
+
+`GET …/threads/[threadId]/messages` returns the whole conversation (≤1,000 rows; 157 KB on the
+biggest thread) on every 10s poll, re-resolves the session three times, and builds the whole inbox
+via `getSmsThreads()` for one row. New, separate endpoint so shipped builds keep working:
+`GET /api/v1/sms/threads/[threadId]/feed` — `limit` (+`includeThread=1`) to open, `before` to page
+older, `changedSince=<cursor>` to poll (by `updatedAt`, 5s overlap, app merges by id; `reset` on
+>200 changes). Additive index `SmsMessage(conversationId, updatedAt)`.
+
+**App side (after deploy):** `useSmsThreadMessages` switches to the feed — feature-detect with a
+404 fallback to the old route; merge Changes results by id; load older on scroll to the top.
+
+---
+
+## 14. Per-device notification sound (requested 2026-11-01)
+
+**Status:** prompt written, not started. `docs/prompts/BACKEND-PUSH-SOUND.md` → `ninja_prm`
+branch `push-sound` (off `main`, independent of `fast-message`).
+
+The user wants one selectable notification sound for all pushes, mainly for iOS. A closed app
+can't choose the sound, so the push has to carry it: iOS reads `sound: "<id>.wav"` (bundled file),
+Android 8+ reads only the channel, so `channelId: "sound_<id>"` (one channel per sound, created by
+the app). Backend changes:
+
+- `PushToken.sound String?` (null = today's `"default"`/`"default"`). `db push` = one `ADD COLUMN`.
+- Allowlist `src/lib/push/sounds.ts` ↔ app `src/lib/push-sounds.ts` (16 ids, `classic_*` /
+  `themed_*`). Android raw resources only allow `[a-z0-9_]`, hence snake_case ids/filenames.
+- `PATCH /push/preferences` accepts `sound` (absent = unchanged, `null` = reset); `register`
+  accepts it too but never wipes it when absent.
+- Worker builds `sound`/`channelId` from the row via `pushSoundFields()`; unknown ids fall back
+  to default.
+
+Old builds are safe: they never send `sound`, so they stay on the default. ⚠️ The `themed_*`
+sounds (R2-D2, lightsaber) are Lucasfilm's — **internal builds only** (user's decision
+2026-11-01); remove them from both allowlists before any store build.

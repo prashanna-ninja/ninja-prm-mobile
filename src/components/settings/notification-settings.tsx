@@ -2,8 +2,11 @@ import * as React from "react";
 import { ActivityIndicator, Linking, Pressable, Switch, Text, View } from "react-native";
 
 import { sendTestPush } from "@/api/push.api";
+import { NotificationSoundSheet } from "@/components/settings/notification-sound-sheet";
 import { describeError } from "@/components/ui/states";
+import { ChevronRight } from "@/lib/icons";
 import { PUSH_CATEGORY_META } from "@/lib/push-categories";
+import { findPushSound } from "@/lib/push-sounds";
 import { usePush } from "@/providers/push-provider";
 
 /**
@@ -20,6 +23,7 @@ export function NotificationSettings() {
   const push = usePush();
   const [busy, setBusy] = React.useState(false);
   const [notice, setNotice] = React.useState<string | null>(null);
+  const [soundOpen, setSoundOpen] = React.useState(false);
   const [testState, setTestState] = React.useState<
     { kind: "idle" } | { kind: "sending" } | { kind: "sent" } | { kind: "error"; message: string }
   >({ kind: "idle" });
@@ -112,6 +116,21 @@ export function NotificationSettings() {
             ))
           : null}
 
+        {on ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Notification sound"
+            onPress={() => setSoundOpen(true)}
+            className="flex-row items-center gap-3 border-t border-border px-4 py-3.5 active:opacity-70"
+          >
+            <Text className="min-w-0 flex-1 font-sans text-[15px] text-card-foreground">Sound</Text>
+            <Text numberOfLines={1} className="font-sans-medium text-sm text-muted-foreground">
+              {findPushSound(push.sound)?.name ?? "Phone default"}
+            </Text>
+            <ChevronRight size={16} color="#A1A1AA" strokeWidth={2} />
+          </Pressable>
+        ) : null}
+
         {on && push.token ? (
           <Pressable
             accessibilityRole="button"
@@ -139,6 +158,8 @@ export function NotificationSettings() {
           Test failed: {testState.message}
         </Text>
       ) : null}
+
+      <NotificationSoundSheet visible={soundOpen} onClose={() => setSoundOpen(false)} />
     </View>
   );
 }

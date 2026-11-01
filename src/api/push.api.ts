@@ -24,6 +24,12 @@ export type RegisterPushTokenInput = {
   /** e.g. "iPhone 15 Pro", so a user can tell their devices apart. */
   deviceName?: string | null;
   preferences: PushPreferences;
+  /**
+   * Sound id (lib/push-sounds.ts) or null for the phone's default. Always
+   * sent, so a re-register (new token, reinstall) carries this device's
+   * choice. A backend without sounds ignores the key.
+   */
+  sound: string | null;
 };
 
 /**
@@ -82,6 +88,22 @@ export function updatePushPreferences(
     apiFetch<{ success: true }>("/api/v1/push/preferences", {
       method: "PATCH",
       body: JSON.stringify({ token, preferences }),
+    }),
+  );
+}
+
+/**
+ * Change this device's notification sound (`null` = phone default). Same PATCH
+ * as the switches, sent without `preferences` so they're left alone.
+ *
+ * ⚠️ A backend from before sounds rejects this with a 400 (it requires
+ * `preferences`), which surfaces as `error`, so the caller keeps the old sound.
+ */
+export function updatePushSound(token: string, sound: string | null): Promise<PushSyncResult> {
+  return attempt(() =>
+    apiFetch<{ success: true }>("/api/v1/push/preferences", {
+      method: "PATCH",
+      body: JSON.stringify({ token, sound }),
     }),
   );
 }

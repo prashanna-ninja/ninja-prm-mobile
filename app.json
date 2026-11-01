@@ -65,7 +65,25 @@
         "expo-notifications",
         {
           "icon": "./src/assets/images/notification-icon.png",
-          "color": "#ff8900"
+          "color": "#ff8900",
+          "sounds": [
+            "./src/assets/sounds/classic_alert.wav",
+            "./src/assets/sounds/classic_button.wav",
+            "./src/assets/sounds/classic_car_beep.wav",
+            "./src/assets/sounds/classic_cartoon.wav",
+            "./src/assets/sounds/classic_corporate.wav",
+            "./src/assets/sounds/classic_plane_chime.wav",
+            "./src/assets/sounds/classic_ui_ping.wav",
+            "./src/assets/sounds/classic_warning.wav",
+            "./src/assets/sounds/classic_warning_2.wav",
+            "./src/assets/sounds/themed_r2d2_squeaks_2.wav",
+            "./src/assets/sounds/themed_r2d2_squeaks_3.wav",
+            "./src/assets/sounds/themed_r2d2_squeaks_5.wav",
+            "./src/assets/sounds/themed_r2d2_whistle_1.wav",
+            "./src/assets/sounds/themed_r2d2_whistle_2.wav",
+            "./src/assets/sounds/themed_saber_off.wav",
+            "./src/assets/sounds/themed_saber_on.wav"
+          ]
         }
       ]
     ],

@@ -4,39 +4,58 @@ A React Native + Expo app for **Ninja PRM**. It reuses the existing Next.js PRM 
 (`ref/prm`) — same database, same Better Auth session, same API. This doc is the single entry
 point: **what exists, how to run it, what to watch out for, and what to do next.**
 
-> ## Status — 2026-10-27 (session 9)
+> ## Status — 2026-11-01 (end of session 10)
 >
-> **Push notifications — app side built on `feat/push`, NOT usable yet.** Three things block it,
-> in this order (all in `docs/prompts/BACKEND-PUSH.md`):
-> 1. **Accounts:** QStash + Expo token into PRM's Vercel env (QStash reused from the CRM);
->    Firebase Android app → `google-services.json` + `app.json` line; FCM and APNs keys via
->    `eas credentials`.
-> 2. **Backend:** run the prompt in `ninja_prm`.
-> 3. **New native builds** — `expo-notifications`/`expo-device` are native; Metro reload won't do.
-> Spec and device checklist: [FEAT-05](docs/features/FEAT-05-PUSH.md).
+> **Everything is on `feat/push`** (pushed, in sync with origin). It contains `main`,
+> `feat/tasks` and `feat/messages`, so **one PR, `feat/push` → `main`, merges all of it.**
+> Working tree: clean apart from this session's docs (uncommitted) and an untracked
+> `src/assets/notification-sounds/` the user added (see "Loose ends").
 >
-> Earlier work, still to device-test: **Tasks** (FEAT-03) and **Messages** (FEAT-04) — merged to
-> `feat/messages` and pushed; the SMS backend is live.
+> **Live and working:** Messages (FEAT-04) and push notifications (FEAT-05) on **Android** — the
+> user confirmed push arrives. Contact tags show on every contact list/picker and the contact
+> detail (98340e9). Messages freshness (30b833c): refetch on return to the app, push tap
+> invalidates, thread poll 10s live / 60s quiet, inbox poll 30s while on screen, spinner only on a
+> real pull. **The user is trying it with the client** — ask how it went.
 >
-> **Navigation changed (the user's call):** tabs are now Home · **Messages** · Recordings ·
-> Contacts · Tasks (Messages moved to second on 2026-10-20). Settings left the bar and is a **gear top-right on Home**, replacing the theme
-> toggle (theme lives in Settings → Appearance).
+> **Measured 2026-10-30:** every request costs ~0.45s before any DB work (functions in Vercel
+> `iad1`, US East). Opening/polling a thread re-downloads the whole conversation (biggest:
+> 157 KB). Full table in IMPLEMENTATION-LOG 2026-11-01.
 >
-> Both features are pure JS — no native change — so a Metro reload on the dev build tests them.
-> Typecheck clean, Android bundle exports (5.9MB).
+> ### What to do next — in order
 >
-> ### What to do next
+> 0. **Notification sound (session 11, 2026-11-01) — app code done, untested.** Backend on
+>    `ninja_prm` `push-sound` (reviewed OK). Deploy order: **`db push` the `sound` column first,
+>    then deploy** (FEAT-05 §3b / BACKEND-CHANGES §14). Then a new dev build on both platforms and
+>    the sound checklist in FEAT-05 §4. Star Wars sounds = internal builds only.
+> 1. **Ship the `/feed` endpoint (backend built, not deployed).** `ninja_prm` branch
+>    `fast-message` (95a9df0) implements `docs/prompts/BACKEND-SMS-FEED.md`. Review it against the
+>    prompt, confirm the `SmsMessage(conversationId, updatedAt)` index is in the DB (`db push` —
+>    must be a single CREATE INDEX), run the prompt's Verify timings on a preview deploy, merge,
+>    deploy. **Ask before touching the backend repo** (CLAUDE.md rule 10).
+> 2. **App side of `/feed`** (BACKEND-CHANGES §13): `useSmsThreadMessages` opens with
+>    `?limit=50&includeThread=1`, polls `?changedSince=<cursor>` and **merges by message id**
+>    (a changed row replaces the cached one; ignore changed rows older than the oldest loaded
+>    one), loads older with `?before=<oldest id>` at the top of the inverted list, re-opens on
+>    `reset: true`, and **falls back to `…/messages` on a 404** (an old backend). Keep the
+>    optimistic-send matching in `[threadId].tsx` working — it reads the message list.
+> 3. **iOS push on a device** — new iOS dev build; check the APNs key is attached in
+>    `eas credentials -p ios`; run FEAT-05 §4.
+> 4. **Device-test and merge** — FEAT-03 §4 (Tasks), FEAT-04 §5 (Messages), then PR
+>    `feat/push` → `main`.
+> 5. **If it's still slow after /feed:** find where the database is hosted. Move functions to
+>    Sydney **only together with** the database. App-side options: show the pushed text in the
+>    thread instantly from the notification; persist the query cache to disk (needs a storage
+>    package + native build).
 >
-> 1. **Run the SMS backend prompt** — `docs/prompts/BACKEND-SMS-API.md`. 🚨 `../ninja_prm` is
->    BEHIND `ref/prm` and has no SMS code; pull it first. Then check every field in
->    `src/types/sms.types.ts` against the real JSON.
-> 2. **Device-test Tasks and Messages** — checklists in FEAT-03 §4 and FEAT-04 §5. The keyboard
->    on the Messages composer needs checking on **both** platforms.
-> 3. **Merge** `feat/tasks` then `feat/messages` into `main`.
-> 4. Android preview build — the post-splash crash fix is still unverified:
->    `eas build --platform android --profile preview`.
-> 5. Still blocked on the backend: assign a recording to a contact
->    (`docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md`).
+> ### Loose ends (not started — each needs the user's go-ahead)
+>
+> - **Push backend follow-ups:** add `drainPushOutbox()` to the hourly cron (stranded rows wait
+>   for the next push today); tasks push skips the subscription check the digest email does.
+> - **Tags on Messages thread rows/header** need the backend to add `tags` to the thread's
+>   `contact` (`{id,name,image}` today).
+> - **Older, still open:** Android **preview** build post-splash crash fix unverified
+>   (`eas build -p android --profile preview`); assign a recording to a contact is blocked on the
+>   backend (`docs/prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md`).
 >
 > ### Don't
 >
@@ -57,17 +76,22 @@ point: **what exists, how to run it, what to watch out for, and what to do next.
 Paste this in verbatim:
 
 ```
-Read CLAUDE.md and HANDOVER.md. We are picking up Ninja PRM Mobile after the
-2026-10-18 session 8, which built Messages (FEAT-04) against a backend that
-doesn't exist yet, and moved Settings from the tab bar to a gear on Home.
-Tasks (FEAT-03) and Messages are both unmerged and never run on a device.
+Read CLAUDE.md and HANDOVER.md (the status block at the top is current as of
+2026-11-01, end of session 10). Ninja PRM Mobile now has Recordings, Contacts,
+Tasks, Messages (CrazyTel SMS) and push notifications; push works on Android.
+Everything is on feat/push, which contains main, feat/tasks and feat/messages.
 
-In priority order:
+First ask me how the Messages freshness changes (commit 30b833c) went with the
+client. Then, in priority order:
 
-1. Has the SMS backend (docs/prompts/BACKEND-SMS-API.md) shipped? If yes,
-   diff its real JSON against src/types/sms.types.ts and fix any drift.
-2. Device-test Tasks and Messages (FEAT-03 section 4, FEAT-04 section 5).
-3. Merge feat/tasks, then feat/messages.
+1. The backend /feed endpoint is built on ../ninja_prm branch `fast-message`
+   (95a9df0) but not deployed. Review it against
+   docs/prompts/BACKEND-SMS-FEED.md and tell me what you'd check before I
+   deploy it. Ask before changing anything in the backend repo.
+2. Once it's deployed: switch useSmsThreadMessages to /feed (open latest 50,
+   poll changedSince and merge by id, load older on scroll, 404 fallback to
+   …/messages). Plan in docs/implementation/BACKEND-CHANGES.md section 13.
+3. iOS push test, device checklists, then one PR feat/push -> main.
 
 Before writing any code, read CLAUDE.md's gotcha list - especially 4b
 (never give a Pressable a function style) and 4c (import icons from
