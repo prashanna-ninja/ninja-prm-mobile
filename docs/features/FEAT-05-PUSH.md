@@ -86,6 +86,20 @@ server has it, and a failure restores the previous sound.
   before a store build.
 - Needs a **new native build** (sounds are native resources).
 
+## 3c. Clearing a thread's notifications (added 2026-11-03)
+
+App-only, iOS and Android, no backend change. While a Messages thread is on screen with the app
+in front (`useThreadNotifications` in `[threadId].tsx`, logic in `src/lib/push-dismiss.ts`):
+
+- its delivered notifications are removed from the lock screen / notification centre —
+  `getPresentedNotificationsAsync()` filtered on `data.type === "sms"` + `data.threadId`, then
+  `dismissNotificationAsync()`. Runs on open, on returning to the app, and on each new message;
+- a push for that thread shows **no banner** (the foreground handler checks `isViewingThread`).
+
+⚠️ Matches every id the thread can have — route param, `thread.id`, `contact:<contactId>`,
+`conv:<conversationId>` per phone — because saving a number to a contact changes the thread id
+and older notifications carry the old one. Tasks notifications are untouched.
+
 ## 4. Done criteria
 
 - [x] Typecheck clean; Android bundle exports (6MB); the plugin writes the icon and colour into the
@@ -102,6 +116,9 @@ server has it, and a failure restores the previous sound.
 - [ ] Sound (needs backend `push-sound` deployed + new build): pick a sound → test push plays it
       with the app closed, iOS and Android; back to "Phone default" → default sound; Android
       system settings show one `Ninja PRM · <name>` channel, not sixteen.
+- [ ] Clearing (iOS + Android): two texts arrive with the app closed → open that thread → both
+      leave the notification centre; other threads' notifications stay. With the thread open, a
+      new text shows in the thread with no banner; with another screen open, it still banners.
 - [ ] Uninstall, text again → the token is gone from `push_token` within ~15 minutes.
 
 ## 5. Known gaps

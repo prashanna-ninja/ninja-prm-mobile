@@ -736,3 +736,15 @@ column exists. Also noticed `main` already has `fast-message` merged (bd9147c).
 `notification-sound-sheet.tsx`. Typecheck clean. **Not yet on a device — needs a new native build
 and the backend deployed.** Snake_case asset filenames break the kebab-case rule on purpose
 (Android raw resource names).
+
+---
+
+## 2026-11-03 — Clear a thread's notifications when it's opened (FEAT-05 §3c)
+
+Sound feature confirmed working by the user (backend `push-sound` deployed, TestFlight). New
+request: when a text's conversation is opened in the app, remove its notifications from the phone,
+iOS and Android, no backend change. Done with `getPresentedNotificationsAsync` +
+`dismissNotificationAsync`, matched on the push's existing `data.threadId`
+(`src/lib/push-dismiss.ts`, `src/hooks/use-thread-notifications.ts`). Added: no banner for a text
+in the thread already on screen. Matching covers every id a thread can have (the `conv:` →
+`contact:` change on saving a contact). Typecheck clean; **not yet tested on a device.**

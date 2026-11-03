@@ -20,6 +20,8 @@ import {
   type PushCategory,
   type PushPreferences,
 } from "@/lib/push-categories";
+import { isViewingThread } from "@/lib/push-dismiss";
+import { parsePushData } from "@/lib/push-links";
 import { androidChannelFor, findPushSound } from "@/lib/push-sounds";
 import { qk } from "@/lib/query-keys";
 import { useSession } from "@/providers/session-provider";
@@ -117,12 +119,18 @@ const PushContext = React.createContext<PushContextValue | null>(null);
  * one when the app is backgrounded, and doubling it mid-use is obnoxious.
  */
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    // Already reading that conversation: the message appears in the thread
+    // (the received-listener below refetches it), so a banner is noise.
+    const data = parsePushData(notification.request.content.data);
+    const onScreen = data?.type === "sms" && isViewingThread(data.threadId);
+    return {
+      shouldShowBanner: !onScreen,
+      shouldShowList: !onScreen,
+      shouldPlaySound: false,
+      shouldSetBadge: true,
+    };
+  },
 });
 
 /**

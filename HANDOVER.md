@@ -23,6 +23,8 @@ point: **what exists, how to run it, what to watch out for, and what to do next.
 >
 > ### What to do next — in order
 >
+> 00. **Clear a thread's notifications on open (2026-11-03) — code done, untested.** JS-only (no
+>     native build needed). Device checklist in FEAT-05 §4.
 > 0. **Notification sound (session 11, 2026-11-01) — app code done, untested.** Backend on
 >    `ninja_prm` `push-sound` (reviewed OK). Deploy order: **`db push` the `sound` column first,
 >    then deploy** (FEAT-05 §3b / BACKEND-CHANGES §14). Then a new dev build on both platforms and

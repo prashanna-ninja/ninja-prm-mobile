@@ -15,6 +15,7 @@ import { SaveContactSheet } from "@/components/messages/save-contact-sheet";
 import { ThreadAvatar } from "@/components/messages/thread-avatar";
 import { Screen } from "@/components/screen";
 import { ErrorState, describeError } from "@/components/ui/states";
+import { useThreadNotifications } from "@/hooks/use-thread-notifications";
 import {
   useMarkSmsThreadRead,
   useSendSms,
@@ -82,6 +83,8 @@ export default function ThreadScreen() {
   );
   const thread = query.data?.thread;
   const messages = query.data?.messages;
+  // Clear this thread's notifications; no banners for it while it's open.
+  useThreadNotifications(threadId, thread, focused);
   const markRead = useMarkSmsThreadRead();
   const send = useSendSms(threadId);
 
