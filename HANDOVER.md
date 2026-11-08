@@ -23,6 +23,15 @@ point: **what exists, how to run it, what to watch out for, and what to do next.
 >
 > ### What to do next — in order
 >
+> 0000. **Edit contact + tags (2026-11-08) — code done, untested.** JS-only, no backend change
+>       (FEAT-02 §2 Edit). Ships with the next build: **OTA is not set up** (no `expo-updates`).
+>       Test: edit a contact with 2+ numbers and check neither is lost; add/remove tags; create
+>       a tag; save with no change is disabled; Messages thread title updates after a rename.
+>       Also **message drafts** (FEAT-04 §2 Drafts): type, go back → "Draft:" in the inbox;
+>       reopen → text is there; kill the app → still there; send → gone; sign out → gone.
+> 000. **Late / missing SMS pushes (2026-11-04).** Three PRM accounts share CrazyTel 570365 and
+>      take the webhook route from each other. Backend prompt ready:
+>      `docs/prompts/BACKEND-SMS-SHARED-NUMBERS.md` (BACKEND-CHANGES §15). No app change.
 > 00. **Clear a thread's notifications on open (2026-11-03) — code done, untested.** JS-only (no
 >     native build needed). Device checklist in FEAT-05 §4.
 > 0. **Notification sound (session 11, 2026-11-01) — app code done, untested.** Backend on

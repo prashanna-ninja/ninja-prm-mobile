@@ -78,8 +78,15 @@ export function useUpdateContact(id: string) {
         method: "PATCH",
         body: JSON.stringify(input),
       }),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
       void qc.invalidateQueries({ queryKey: qk.contacts.all() });
+      // Messages shows contact names and links threads to contacts by phone.
+      if (input.name !== undefined || input.phone !== undefined) {
+        void qc.invalidateQueries({ queryKey: qk.sms.all() });
+      }
+      if (input.tagIds !== undefined) {
+        void qc.invalidateQueries({ queryKey: qk.tags.all() });
+      }
     },
   });
 }

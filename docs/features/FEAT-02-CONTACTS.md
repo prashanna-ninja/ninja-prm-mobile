@@ -12,14 +12,14 @@ feature stops being knowable only from the diff.
 ## 1. Scope
 
 A phone-sized version of the web app's `/dashboard/contacts`. Read, create, archive, delete,
-and log an interaction. **No editing of an existing contact** — `useUpdateContact` exists in the
-API layer but nothing calls it yet.
+edit (2026-11-08), and log an interaction.
 
 | Route | Screen |
 | ----- | ------ |
 | `(app)/contacts/index` | List: search, relationship filter, infinite scroll, **＋** to create |
 | `(app)/contacts/new` | Create form |
 | `(app)/contacts/[id]` | Detail |
+| `(app)/contacts/edit/[id]` | Edit form (2026-11-08) |
 
 The tab sits third, between Recordings and Settings (`src/app/(app)/_layout.tsx`).
 
@@ -45,6 +45,27 @@ The tab sits third, between Recordings and Settings (`src/app/(app)/_layout.tsx`
 - On success: `router.replace` to the detail screen — **not** `push`. Backing out of a brand-new
   contact should land on the list, not on the form you just submitted.
 - Cancelling a dirty form asks before discarding.
+
+### Edit — `contacts/edit/[id].tsx` (2026-11-08)
+
+- Reached from the **Edit** button top right of the detail screen. Same `ContactForm`, filled by
+  `contactToForm` from GET `/contacts/:id`. **No backend change**: `PATCH /api/v1/contacts/:id`
+  was already live.
+- **Only changed fields are sent** (`toUpdateInput`). The PATCH route leaves every key it isn't
+  sent alone, so fields the app doesn't show (photo, notes, company, date of birth, timezone) are
+  never touched. `""` clears a text field, `[]` clears a list.
+- The form snapshots the contact once, after a **fresh** fetch (`isFetchedAfterMount`), so a
+  background refetch can't wipe what you're typing and the diff isn't against a stale cache.
+- **Phones:** one box per number with remove and **Add number** (create and edit). ⚠️ Never one
+  box: `phone` is a list and Messages links threads by it, so squashing would drop numbers.
+  Sent as an array; the server de-dupes (`serializeContactPhones`).
+- **Tags:** `TagPicker` shows the user's tags (GET `/api/v1/tags`, `src/api/tags.api.ts`); tap to
+  toggle. "New tag" creates one (POST `/api/v1/tags`, default colour), reusing an existing tag
+  of the same name because the server 409s on duplicates. Saved as `tagIds`, which **replaces**
+  the contact's tags. Also on the create form.
+- Saving invalidates contacts, plus `sms` when the name or phones changed (thread titles and
+  contact links), plus `tags` when tags changed (counts).
+- Save is disabled until something changed. Cancelling with changes asks first.
 
 ### Detail — `contacts/[id].tsx`
 
@@ -108,10 +129,12 @@ Every mutation invalidates `qk.contacts.all()`; logging an interaction also inva
 - **You cannot assign a recording to a contact from the phone.** No endpoint exists — see
   [../implementation/BACKEND-CHANGES.md](../implementation/BACKEND-CHANGES.md) §7 and
   [../prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md](../prompts/BACKEND-ASSIGN-RECORDING-CONTACT.md).
-- **No edit screen.** `useUpdateContact` is wired and unused.
+- ~~No edit screen.~~ Added 2026-11-08 (§2 Edit). Still not editable from the phone: photo,
+  company, date of birth, important dates, notes.
 - ~~Tasks are read-only here.~~ Fixed 2026-09-29 by [FEAT-03](FEAT-03-TASKS.md): open tasks are
   tappable and **＋ Task** creates one pre-linked to the contact. The block still shows at most
   5, OPEN only — that's the detail route's `taskContacts` include.
-- **Companies and tags can't be created** from the app; only picked if they already exist.
+- **Companies can't be created** from the app. Tags can (2026-11-08), but not renamed,
+  recoloured or deleted.
 - ~~`phone` rendered raw.~~ Fixed 2026-10-18: it's a JSON-encoded list like `likes`, now one row
   per number, each with a **Text** button ([FEAT-04](FEAT-04-MESSAGES.md) §4).

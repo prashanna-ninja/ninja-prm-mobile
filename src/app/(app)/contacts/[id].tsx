@@ -43,6 +43,7 @@ import {
   Mail,
   MapPin,
   MessageSquare,
+  Pencil,
   Phone,
   Plus,
   Trash,
@@ -144,6 +145,22 @@ export default function ContactDetailScreen() {
             >
               <ArrowLeft size={18} color="#52525B" strokeWidth={2} />
             </Pressable>
+          }
+          right={
+            data ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Edit contact"
+                onPress={() =>
+                  router.push({ pathname: "/contacts/edit/[id]", params: { id } })
+                }
+                hitSlop={10}
+                className="h-10 flex-row items-center gap-1.5 rounded-full border border-border px-3.5 active:opacity-70"
+              >
+                <Pencil size={15} color="#AD5100" strokeWidth={2} />
+                <Text className="font-sans-medium text-[13px] text-primary-strong">Edit</Text>
+              </Pressable>
+            ) : null
           }
         />
 

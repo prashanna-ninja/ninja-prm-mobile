@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { authClient } from "@/lib/auth-client";
+import { clearAllSmsDrafts } from "@/lib/sms-drafts";
 import { queryClient } from "@/lib/query-client";
 
 type SessionUser = {
@@ -103,6 +104,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // happens to refetch — their call transcripts, briefly, in someone
       // else's hands.
       queryClient.clear();
+      // Same reason: unsent texts are this user's, not the next one's.
+      clearAllSmsDrafts();
     }
   }, []);
 

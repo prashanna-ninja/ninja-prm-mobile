@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardHeight } from "@/hooks/use-keyboard-height";
 import { ChevronRight, Send } from "@/lib/icons";
 import { countSmsSegments } from "@/lib/sms-segments";
+import { clearSmsDraft, getSmsDraft, setSmsDraft } from "@/lib/sms-drafts";
 
 /** CrazyTel's cap, same as Ninja CRM Mobile's composer. */
 const CHAR_LIMIT = 1600;
@@ -16,6 +17,9 @@ const CHAR_LIMIT = 1600;
  * bubble), so `onSend` is fire-and-forget from here — the draft clears at once,
  * the way every messaging app behaves.
  *
+ * Drafts: with `draftKey`, unsent text is kept on the device per thread
+ * (lib/sms-drafts.ts) and comes back when you reopen the thread.
+ *
  * Keyboard: measured, not KeyboardAvoidingView (CLAUDE.md gotcha 6), and the
  * safe-area inset is handled per platform — see hooks/use-keyboard-height.ts.
  * The screen hides the tab bar so this owns the bottom edge.
@@ -26,6 +30,7 @@ export function MessageComposer({
   onPickLine,
   onSend,
   disabledNotice,
+  draftKey,
 }: {
   placeholder: string;
   lineName: string | null;
@@ -34,10 +39,30 @@ export function MessageComposer({
   onSend: (body: string) => void;
   /** Shown INSTEAD of the composer (e.g. a sender-name thread can't take replies). */
   disabledNotice?: string;
+  /** The thread id to keep an unsent draft under. Omit for no draft. */
+  draftKey?: string;
 }) {
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
-  const [body, setBody] = React.useState("");
+  const [body, setBodyState] = React.useState(() => (draftKey ? getSmsDraft(draftKey) : ""));
+  const setBody = (text: string) => {
+    setBodyState(text);
+    if (draftKey) setSmsDraft(draftKey, text);
+  };
+
+  // A thread's id changes when its number is saved to a contact
+  // (`conv:` -> `contact:`). Move the draft with it rather than orphaning it.
+  const prevKey = React.useRef(draftKey);
+  React.useEffect(() => {
+    const prev = prevKey.current;
+    prevKey.current = draftKey;
+    if (prev && draftKey && prev !== draftKey) {
+      clearSmsDraft(prev);
+      setSmsDraft(draftKey, body);
+    }
+    // Only on a key change; `body` is read at that moment on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
 
   // Real segments, not length/160 — one emoji drops a segment from 160 to 70
   // characters, and each segment is billed. See lib/sms-segments.ts.
@@ -66,7 +91,8 @@ export function MessageComposer({
   const send = () => {
     if (!canSend) return;
     onSend(trimmed);
-    setBody("");
+    setBodyState("");
+    if (draftKey) clearSmsDraft(draftKey);
   };
 
   return (

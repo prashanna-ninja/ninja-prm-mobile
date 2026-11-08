@@ -378,3 +378,35 @@ the app). Backend changes:
 Old builds are safe: they never send `sound`, so they stay on the default. ⚠️ The `themed_*`
 sounds (R2-D2, lightsaber) are Lucasfilm's — **internal builds only** (user's decision
 2026-11-01); remove them from both allowlists before any store build.
+
+---
+
+## 15. CrazyTel numbers shared by several PRM accounts (requested 2026-11-04)
+
+**Status:** prompt written, not started. `docs/prompts/BACKEND-SMS-SHARED-NUMBERS.md` →
+`ninja_prm` branch `sms-shared-numbers` (off `main`). No schema change. No app change.
+
+**Symptom:** pushes for texts arrived ~10 min late (when the app was opened) or not at all, for
+more than one user. The Integrations page showed ⚠ "forwards to an outdated link" on every number,
+and it came back ~15 min after "Receive on all".
+
+**Cause (from the code; not yet confirmed with production data):** three PRM accounts are
+connected to the same CrazyTel account (570365). Each connection has its own webhook token, but
+`registerSmsWebhook` keeps only one route to this app per number, and the hourly self-heal
+(`ensureSmsWebhooks`) re-takes it for any connection with Receive on. So the accounts take the
+numbers from each other: the current owner gets texts instantly, and the others only via the
+15-minute sync / `/sms/check`, so their pushes are late, or skipped past `FRESH_TEXT_MS` (10 min).
+The SMS ingestion code is unchanged since 2026-10-16. Push / feed / sound didn't cause it.
+
+**Fix ("Fix 2"):** one route per number; the webhook stores each inbound text for every
+connection with the same non-null `accountCode` that has the number enabled (each logs its own
+delivery event and pushes per user); "on" / self-heal / Receive-on accept any sibling's URL;
+every unregister path hands the route to a sibling that wants Receive instead of removing it.
+No-sibling and legacy behaviour must be identical to today.
+
+**Rejected:** "Fix 1" (one route per account): it only works if CrazyTel calls every route on a
+number, which is unverified, and stale routes would build up.
+
+**Also noticed:** `resolvePublicOrigin` probes for an apex→www redirect per instance, hourly, with
+a 4s timeout. A failed probe falls back to raw `APP_URL`, so the expected URL could differ between
+instances. Out of scope here; the prompt asks the backend session to report it.

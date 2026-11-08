@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { ThreadAvatar } from "@/components/messages/thread-avatar";
 import { formatThreadTime, lineLabel, threadTitle } from "@/lib/sms";
+import { useSmsDraft } from "@/lib/sms-drafts";
 import type { SmsLine, SmsThread } from "@/types/sms.types";
 
 export function ThreadRow({
@@ -15,6 +16,10 @@ export function ThreadRow({
   const router = useRouter();
   const title = threadTitle(thread);
   const unread = thread.unreadCount > 0;
+  // An unsent draft replaces the preview, like Messages. A new incoming
+  // text (unread) still wins, so you don't miss it.
+  const draft = useSmsDraft(thread.id).trim();
+  const showDraft = !!draft && !unread;
 
   const preview = thread.lastMessagePreview
     ? `${thread.lastDirection === "OUTBOUND" ? "You: " : ""}${thread.lastMessagePreview}`
@@ -69,7 +74,14 @@ export function ThreadRow({
                 : "font-sans text-muted-foreground"
             }`}
           >
-            {preview}
+            {showDraft ? (
+              <>
+                <Text className="font-sans-medium text-destructive">Draft: </Text>
+                {draft.replace(/\s+/g, " ")}
+              </>
+            ) : (
+              preview
+            )}
           </Text>
           {unread ? (
             <View className="h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5">

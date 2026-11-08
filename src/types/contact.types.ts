@@ -135,7 +135,8 @@ export type CreateContactInput = {
   name: string;
   relationshipType?: RelationshipType;
   email?: string;
-  phone?: string;
+  /** A list of numbers (or one string); the server de-dupes and stores a JSON list. */
+  phone?: string | string[];
   location?: string;
   dateOfBirth?: string;
   about?: string;
@@ -145,7 +146,14 @@ export type CreateContactInput = {
   tagIds?: string[];
 };
 
+/**
+ * What PATCH /contacts/:id accepts. Only the keys you send are changed;
+ * `""` / `[]` clears a field. `tagIds` REPLACES the contact's tags.
+ */
 export type UpdateContactInput = Partial<CreateContactInput>;
+
+/** GET /api/v1/tags row. `_count.entityTags` = how many contacts use it. */
+export type TagWithCount = Tag & { _count?: { entityTags: number } };
 
 /**
  * `likes`/`dislikes` come back as a JSON-encoded string, not an array.

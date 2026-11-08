@@ -317,6 +317,7 @@ export default function ThreadScreen() {
           lineName={lineLabel(lines, lineKey)}
           onPickLine={lines.length > 1 ? () => setLinePickerOpen(true) : undefined}
           onSend={onSend}
+          draftKey={thread.id}
           disabledNotice={
             thread.canReply
               ? undefined

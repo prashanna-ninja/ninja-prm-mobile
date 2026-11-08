@@ -748,3 +748,49 @@ iOS and Android, no backend change. Done with `getPresentedNotificationsAsync` +
 (`src/lib/push-dismiss.ts`, `src/hooks/use-thread-notifications.ts`). Added: no banner for a text
 in the thread already on screen. Matching covers every id a thread can have (the `conv:` →
 `contact:` change on saving a contact). Typecheck clean; **not yet tested on a device.**
+
+---
+
+## 2026-11-04 — Late SMS pushes: diagnosed, backend fix specified (BACKEND-CHANGES §15)
+
+The user reported a push arriving ~10 min late, the moment the app was opened, and said it was
+happening to more than one user. Traced: pushes are created when a text is *stored*. The webhook
+should store it instantly, but the Integrations page showed ⚠ (`wrong_url`) on every number, and
+it came back ~15 min after "Receive on all". The code shows one PRM route per CrazyTel number,
+and three PRM accounts share CrazyTel 570365, so the accounts take the numbers from each other
+(Receive-on + the hourly `ensureSmsWebhooks`). Confirmed none of our merges (push, feed, sound)
+touched SMS ingestion; it's unchanged since 2026-10-16. Wrote
+`docs/prompts/BACKEND-SMS-SHARED-NUMBERS.md` (Fix 2: fan out each inbound text to every connection
+on the same `accountCode`, stop fighting over the route, hand over on release). No app change.
+Not yet confirmed against production data. Also flagged `resolvePublicOrigin` as a possible
+second cause (per-instance redirect probe).
+
+Also this session: thread notifications are cleared when the thread is opened (FEAT-05 §3c,
+2026-11-03).
+
+Later on 2026-11-04: the backend session built Fix 2 on `ninja_prm` branch `sms-shared-numbers`
+(a34536b). Reviewed against the prompt: matches, no-sibling paths unchanged, `tsc` clean, no
+schema change. Told the user it's OK to merge and deploy, then run the prompt's Verify step 4.
+
+---
+
+## 2026-11-08 — Edit a contact, with tags (FEAT-02 §2 Edit)
+
+Asked whether iOS "Default Messaging App" is possible: yes in principle (Apple entitlement +
+`sms:` link handling), but texts started that way would go out from the CrazyTel number. Not
+started; waiting on the user.
+
+Then: edit contact, **no backend change**, as `PATCH /api/v1/contacts/:id` and `/api/v1/tags`
+already exist on `main`. New `contacts/edit/[id].tsx` + **Edit** button on the detail header.
+`contact-form.tsx` now has a phone list (one box per number, replacing the single box that would
+have dropped extra numbers) and a `TagPicker` (toggle + create), on create and edit. PATCH sends
+only changed fields. New `src/api/tags.api.ts`, `qk.tags`. Typecheck clean; **not yet tested on a
+device.**
+
+**OTA is NOT set up**: no `expo-updates`, no channels in `eas.json`. I wrongly told the user this
+could ship OTA; corrected. It needs a build (TestFlight / APK).
+
+Also: **message drafts** (FEAT-04 §2 Drafts). Unsent text is kept per thread on the device
+(`src/lib/sms-drafts.ts`, a JSON file via `expo-file-system`), survives going back and app
+restarts, shows as "Draft:" in the inbox, clears on send and on sign-out. Composer takes a
+`draftKey`. Typecheck clean; not yet tested on a device.

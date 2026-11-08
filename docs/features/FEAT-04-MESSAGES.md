@@ -81,6 +81,20 @@ polled every 60s while the app is foregrounded, off when SMS isn't set up).
 - Saving a contact changes the thread id (`conv:…` → `contact:…`), so the screen `replace`s itself
   with the new id.
 
+### Drafts (2026-11-08) — `lib/sms-drafts.ts`
+
+- Unsent text stays in a thread's box after going back, and after the app is killed. Local only;
+  the PRM has no drafts.
+- Kept in memory and in one JSON file in the app's documents folder (`expo-file-system`, already
+  a dependency, so no new native module). Writes are debounced 400 ms and flushed when the app
+  backgrounds. Drafts older than 30 days are dropped on load.
+- Keyed by the thread's current `thread.id`. If the id changes while the thread is open (number
+  saved to a contact: `conv:` → `contact:`), the composer moves the draft to the new key.
+- The inbox row shows **Draft:** in red instead of the last message, unless the thread has
+  unread texts (a new incoming text wins).
+- Send clears it at once. **Sign-out deletes every draft** (session-provider, next to
+  `queryClient.clear()`).
+
 ### New message — `messages/new.tsx`
 
 One field: digits → "Text 0403 …"; anything else searches contacts and lists **one row per phone
