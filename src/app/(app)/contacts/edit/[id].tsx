@@ -29,15 +29,19 @@ export default function EditContactScreen() {
   // you're typing, and the diff is always against what you started from.
   const [initial, setInitial] = React.useState<ContactFormValues | null>(null);
   const [values, setValues] = React.useState<ContactFormValues | null>(null);
-  // Wait for a fresh fetch, not the cached copy. Diffing against stale data
-  // could send a field someone changed on the web in the meantime.
+  // Start once nothing is loading. A cached copy within the 30s staleTime
+  // won't refetch, so use it. A stale one refetches on mount, so wait for
+  // that, rather than diff against old data.
+  // ⚠️ Don't wait for `isFetchedAfterMount`: coming from the detail screen
+  // the copy is fresh, no fetch ever runs, and the form shimmers forever
+  // (2026-11-08 bug).
   React.useEffect(() => {
-    if (query.data && query.isFetchedAfterMount && !initial) {
+    if (query.data && !query.isFetching && !initial) {
       const v = contactToForm(query.data);
       setInitial(v);
       setValues(v);
     }
-  }, [query.data, query.isFetchedAfterMount, initial]);
+  }, [query.data, query.isFetching, initial]);
 
   const changes = initial && values ? toUpdateInput(initial, values) : {};
   const dirty = Object.keys(changes).length > 0;

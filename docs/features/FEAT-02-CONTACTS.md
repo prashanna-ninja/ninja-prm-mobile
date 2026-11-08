@@ -54,7 +54,9 @@ The tab sits third, between Recordings and Settings (`src/app/(app)/_layout.tsx`
 - **Only changed fields are sent** (`toUpdateInput`). The PATCH route leaves every key it isn't
   sent alone, so fields the app doesn't show (photo, notes, company, date of birth, timezone) are
   never touched. `""` clears a text field, `[]` clears a list.
-- The form snapshots the contact once, after a **fresh** fetch (`isFetchedAfterMount`), so a
+- The form snapshots the contact once, when nothing is fetching (fresh cache, or after the
+  stale-cache refetch; NOT `isFetchedAfterMount`, which never fires on a fresh cache and left the
+  form shimmering forever, fixed 2026-11-08), so a
   background refetch can't wipe what you're typing and the diff isn't against a stale cache.
 - **Phones:** one box per number with remove and **Add number** (create and edit). ⚠️ Never one
   box: `phone` is a list and Messages links threads by it, so squashing would drop numbers.
