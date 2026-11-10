@@ -6,6 +6,9 @@ import { formatThreadTime, lineLabel, threadTitle } from "@/lib/sms";
 import { useSmsDraft } from "@/lib/sms-drafts";
 import type { SmsLine, SmsThread } from "@/types/sms.types";
 
+/** Shared by every row: see the double-tap guard in onPress. */
+let lastOpenAt = 0;
+
 export function ThreadRow({
   thread,
   lines,
@@ -35,13 +38,18 @@ export function ThreadRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${title}${unread ? `, ${thread.unreadCount} unread` : ""}`}
-      onPress={() =>
+      onPress={() => {
+        // A quick double tap would push the thread twice, and Back would then
+        // seem to go back twice. One open per 800ms across all rows.
+        const now = Date.now();
+        if (now - lastOpenAt < 800) return;
+        lastOpenAt = now;
         router.push({
           pathname: "/messages/[threadId]",
           // The title rides along so the header paints before the fetch lands.
           params: { threadId: thread.id, title },
-        })
-      }
+        });
+      }}
       className="flex-row items-start gap-3 rounded-lg border border-border bg-card p-3 active:opacity-70"
     >
       <ThreadAvatar contact={thread.contact} />

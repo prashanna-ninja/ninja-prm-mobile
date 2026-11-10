@@ -96,10 +96,30 @@ export default function ThreadScreen() {
   const title = thread ? threadTitle(thread) : (params.title ?? "Conversation");
   const lineKey = chosenLine ?? thread?.replyLineKey;
 
-  const goBack = () =>
-    params.fromContact
-      ? router.replace({ pathname: "/contacts/[id]", params: { id: params.fromContact } })
-      : router.replace("/messages");
+  // ⚠️ POP, don't `replace("/messages")`. Replace swaps this thread for a NEW
+  // inbox on top of the existing one, so every visit left an extra inbox in
+  // the stack, and swipe-back / Android back then stepped through them all,
+  // flickering (client video, 2026-11-10). The inbox is always underneath
+  // (`initialRouteName` in _layout), so `back()` lands on it.
+  // `leaving` stops a double tap popping two screens.
+  const leaving = React.useRef(false);
+  useFocusEffect(
+    React.useCallback(() => {
+      leaving.current = false;
+    }, []),
+  );
+  const goBack = () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    if (params.fromContact) {
+      // Opened from a contact (another tab): Back returns there.
+      router.replace({ pathname: "/contacts/[id]", params: { id: params.fromContact } });
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/messages");
+    }
+  };
 
   // Opening a thread reads it — and so does a new text arriving while it's
   // open. Keyed on the latest message so it fires once per change, not per poll.

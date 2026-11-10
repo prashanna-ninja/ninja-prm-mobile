@@ -23,6 +23,11 @@ point: **what exists, how to run it, what to watch out for, and what to do next.
 >
 > ### What to do next — in order
 >
+> 00000. **Thread Back flicker (2026-11-10) — fixed, untested.** Back popped nothing and
+>        stacked inboxes (`replace("/messages")`); now `router.back()`. Test on the client's
+>        phone: open/close several threads, then swipe back / Android back from the inbox; it
+>        should leave Messages at once. Tasks/Recordings/Contacts detail still use the old
+>        `replace` pattern (IMPLEMENTATION-LOG 2026-11-10).
 > 0000. **Edit contact + tags (2026-11-08) — code done, untested.** JS-only, no backend change
 >       (FEAT-02 §2 Edit). Ships with the next build: **OTA is not set up** (no `expo-updates`).
 >       Test: edit a contact with 2+ numbers and check neither is lost; add/remove tags; create

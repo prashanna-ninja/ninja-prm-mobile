@@ -31,16 +31,8 @@ export function threadIdsFor(routeId: string, thread: SmsThread | null | undefin
   return ids;
 }
 
-/** The thread on screen while the app is in front; empty otherwise. */
-let viewing: ReadonlySet<string> = new Set();
-
-export function setViewingThread(ids: ReadonlySet<string> | null) {
-  viewing = ids ?? new Set();
-}
-
-export function isViewingThread(threadId: string): boolean {
-  return viewing.has(threadId);
-}
+/** Kept in lib/viewing-thread.ts; re-exported so existing imports still work. */
+export { isViewingThread, setViewingThread } from "@/lib/viewing-thread";
 
 /** Remove delivered notifications for these thread ids. Never throws. */
 export async function dismissThreadNotifications(ids: ReadonlySet<string>): Promise<void> {

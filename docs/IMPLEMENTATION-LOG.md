@@ -794,3 +794,22 @@ Also: **message drafts** (FEAT-04 §2 Drafts). Unsent text is kept per thread on
 (`src/lib/sms-drafts.ts`, a JSON file via `expo-file-system`), survives going back and app
 restarts, shows as "Draft:" in the inbox, clears on send and on sign-out. Composer takes a
 `draftKey`. Typecheck clean; not yet tested on a device.
+
+---
+
+## 2026-11-10 — Thread Back "goes back several times, flickering" (client video)
+
+Not reproducible on the iOS simulator, and I never saw the video. From the code: the thread's
+Back button did `router.replace("/messages")`, which swaps the thread for a **new** inbox on top
+of the existing one. Each thread visit left one more inbox in the Messages stack, so a later
+swipe-back or Android back stepped through the copies, flickering. Fixed: Back now pops
+(`router.back()` when `canGoBack()`, still `replace` to the contact for `fromContact`), with a
+double-tap guard. Also stopped two other ways of stacking duplicates: a quick double tap on an
+inbox row (800 ms guard in `thread-row.tsx`), and tapping a notification for the thread already
+open (`openPushTarget` checks `isViewingThread`). The viewing state moved to
+`src/lib/viewing-thread.ts` to avoid a push-links ↔ push-dismiss require cycle (re-exported from
+push-dismiss). Typecheck clean; not device-tested.
+
+**Same `replace`-to-list pattern, not changed:** task detail (`replace("/tasks")`), recording
+detail (`replace("/recordings")`), contact detail (`replace("/contacts")`). Likely the same
+duplicate-list effect; left alone until the user confirms the Messages fix works.

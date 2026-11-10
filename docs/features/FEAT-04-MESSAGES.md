@@ -81,6 +81,13 @@ polled every 60s while the app is foregrounded, off when SMS isn't set up).
 - Saving a contact changes the thread id (`conv:…` → `contact:…`), so the screen `replace`s itself
   with the new id.
 
+### Back (2026-11-10)
+
+The thread's Back **pops** (`router.back()`); only `fromContact` uses `replace` to the contact.
+⚠️ Never `replace("/messages")`: it stacks a new inbox over the old one each visit, and
+swipe-back / Android back then walks through the copies (client-reported flicker). Double taps
+are guarded on Back, on inbox rows, and a notification tap for the open thread does nothing.
+
 ### Drafts (2026-11-08) — `lib/sms-drafts.ts`
 
 - Unsent text stays in a thread's box after going back, and after the app is killed. Local only;

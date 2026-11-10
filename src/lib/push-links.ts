@@ -1,5 +1,7 @@
 import { router } from "expo-router";
 
+import { isViewingThread } from "@/lib/viewing-thread";
+
 /**
  * ⚠️ CONTRACT — the `data` object the backend puts on every Expo message
  * (docs/prompts/BACKEND-PUSH.md, "Payload contract"). Read when a
@@ -36,6 +38,9 @@ export function parsePushData(raw: unknown): PushData | null {
 export function openPushTarget(data: PushData) {
   switch (data.type) {
     case "sms":
+      // Already reading it: pushing again would stack a second copy of the
+      // same thread, and Back would then seem to go back twice.
+      if (isViewingThread(data.threadId)) return;
       router.push({ pathname: "/messages/[threadId]", params: { threadId: data.threadId } });
       return;
     case "tasks_due":
