@@ -34,6 +34,11 @@ export default function AppLayout() {
       <Tabs
       screenOptions={{
         headerShown: false,
+        // Leaving a tab resets its stack, so tapping the tab again opens its
+        // main page (the inbox, the list), not the thread/detail you left it
+        // on. The user asked for this on 2026-11-10. Unsent texts survive
+        // (lib/sms-drafts.ts).
+        popToTopOnBlur: true,
         tabBarActiveTintColor: "#FF8900",
         tabBarInactiveTintColor: isDark ? "#A1A1AA" : "#71717A",
         tabBarStyle: {

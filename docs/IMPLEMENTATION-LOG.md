@@ -813,3 +813,10 @@ push-dismiss). Typecheck clean; not device-tested.
 **Same `replace`-to-list pattern, not changed:** task detail (`replace("/tasks")`), recording
 detail (`replace("/recordings")`), contact detail (`replace("/contacts")`). Likely the same
 duplicate-list effect; left alone until the user confirms the Messages fix works.
+
+Also 2026-11-11: **tab press reopened the old detail screen** (open a thread, switch tab, tap
+Messages → back in the thread, not the inbox). Each tab's stack kept its state. Fixed with
+`popToTopOnBlur: true` in the Tabs `screenOptions` (`src/app/(app)/_layout.tsx`, React Navigation
+bottom-tabs 7.19): leaving a tab resets it to its root, for every tab. Cross-tab flows still work
+because they navigate explicitly (contact → Text → thread → Back = `replace` to the contact).
+Drafts survive (on disk). Typecheck clean; not device-tested.

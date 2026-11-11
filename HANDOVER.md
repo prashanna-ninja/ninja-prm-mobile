@@ -28,6 +28,9 @@ point: **what exists, how to run it, what to watch out for, and what to do next.
 >        phone: open/close several threads, then swipe back / Android back from the inbox; it
 >        should leave Messages at once. Tasks/Recordings/Contacts detail still use the old
 >        `replace` pattern (IMPLEMENTATION-LOG 2026-11-10).
+>        Also **tab press → main page** (`popToTopOnBlur`, 2026-11-11): open a thread / task /
+>        contact, switch tab, tap back to it → its list, not the detail. Check contact → Text →
+>        thread → Back still lands on the contact.
 > 0000. **Edit contact + tags (2026-11-08) — code done, untested.** JS-only, no backend change
 >       (FEAT-02 §2 Edit). Ships with the next build: **OTA is not set up** (no `expo-updates`).
 >       Test: edit a contact with 2+ numbers and check neither is lost; add/remove tags; create
